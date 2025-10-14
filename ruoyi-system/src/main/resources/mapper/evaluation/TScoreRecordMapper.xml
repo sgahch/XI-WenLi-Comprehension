@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.TScoreRecordMapper">
+    
+    <resultMap type="TScoreRecord" id="TScoreRecordResult">
+        <result property="id"    column="id"    />
+        <result property="userId"    column="user_id"    />
+        <result property="ruleId"    column="rule_id"    />
+        <result property="materialPath"    column="material_path"    />
+        <result property="materialType"    column="material_type"    />
+        <result property="reason"    column="reason"    />
+        <result property="status"    column="status"    />
+        <result property="score"    column="score"    />
+        <result property="submitTime"    column="submit_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectTScoreRecordVo">
+        select id, user_id, rule_id, material_path, material_type, reason, status, score, submit_time, update_time from t_score_record
+    </sql>
+
+    <select id="selectTScoreRecordList" parameterType="TScoreRecord" resultMap="TScoreRecordResult">
+        <include refid="selectTScoreRecordVo"/>
+        <where>  
+            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="ruleId != null "> and rule_id = #{ruleId}</if>
+            <if test="materialPath != null  and materialPath != ''"> and material_path = #{materialPath}</if>
+            <if test="materialType != null  and materialType != ''"> and material_type = #{materialType}</if>
+            <if test="reason != null  and reason != ''"> and reason = #{reason}</if>
+            <if test="status != null "> and status = #{status}</if>
+            <if test="score != null "> and score = #{score}</if>
+            <if test="submitTime != null "> and submit_time = #{submitTime}</if>
+        </where>
+    </select>
+    
+    <select id="selectTScoreRecordById" parameterType="Long" resultMap="TScoreRecordResult">
+        <include refid="selectTScoreRecordVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertTScoreRecord" parameterType="TScoreRecord" useGeneratedKeys="true" keyProperty="id">
+        insert into t_score_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="ruleId != null">rule_id,</if>
+            <if test="materialPath != null and materialPath != ''">material_path,</if>
+            <if test="materialType != null and materialType != ''">material_type,</if>
+            <if test="reason != null">reason,</if>
+            <if test="status != null">status,</if>
+            <if test="score != null">score,</if>
+            <if test="submitTime != null">submit_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="ruleId != null">#{ruleId},</if>
+            <if test="materialPath != null and materialPath != ''">#{materialPath},</if>
+            <if test="materialType != null and materialType != ''">#{materialType},</if>
+            <if test="reason != null">#{reason},</if>
+            <if test="status != null">#{status},</if>
+            <if test="score != null">#{score},</if>
+            <if test="submitTime != null">#{submitTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateTScoreRecord" parameterType="TScoreRecord">
+        update t_score_record
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="ruleId != null">rule_id = #{ruleId},</if>
+            <if test="materialPath != null and materialPath != ''">material_path = #{materialPath},</if>
+            <if test="materialType != null and materialType != ''">material_type = #{materialType},</if>
+            <if test="reason != null">reason = #{reason},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="score != null">score = #{score},</if>
+            <if test="submitTime != null">submit_time = #{submitTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteTScoreRecordById" parameterType="Long">
+        delete from t_score_record where id = #{id}
+    </delete>
+
+    <delete id="deleteTScoreRecordByIds" parameterType="String">
+        delete from t_score_record where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.TUserProfileMapper">
+    
+    <resultMap type="TUserProfile" id="TUserProfileResult">
+        <result property="id"    column="id"    />
+        <result property="userId"    column="user_id"    />
+        <result property="studentId"    column="student_id"    />
+        <result property="college"    column="college"    />
+        <result property="major"    column="major"    />
+        <result property="grade"    column="grade"    />
+        <result property="className"    column="class_name"    />
+        <result property="gender"    column="gender"    />
+        <result property="birthDate"    column="birth_date"    />
+        <result property="politicalStatus"    column="political_status"    />
+        <result property="enrollmentDate"    column="enrollment_date"    />
+        <result property="dormitory"    column="dormitory"    />
+        <result property="homeAddress"    column="home_address"    />
+        <result property="emergencyContact"    column="emergency_contact"    />
+        <result property="emergencyPhone"    column="emergency_phone"    />
+        <result property="status"    column="status"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectTUserProfileVo">
+        select id, user_id, student_id, college, major, grade, class_name, gender, birth_date, political_status, enrollment_date, dormitory, home_address, emergency_contact, emergency_phone, status, create_time, update_time from t_user_profile
+    </sql>
+
+    <select id="selectTUserProfileList" parameterType="TUserProfile" resultMap="TUserProfileResult">
+        <include refid="selectTUserProfileVo"/>
+        <where>  
+            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="studentId != null  and studentId != ''"> and student_id = #{studentId}</if>
+            <if test="college != null  and college != ''"> and college = #{college}</if>
+            <if test="major != null  and major != ''"> and major = #{major}</if>
+            <if test="grade != null  and grade != ''"> and grade = #{grade}</if>
+            <if test="className != null  and className != ''"> and class_name like concat('%', #{className}, '%')</if>
+            <if test="gender != null "> and gender = #{gender}</if>
+            <if test="birthDate != null "> and birth_date = #{birthDate}</if>
+            <if test="politicalStatus != null  and politicalStatus != ''"> and political_status = #{politicalStatus}</if>
+            <if test="enrollmentDate != null "> and enrollment_date = #{enrollmentDate}</if>
+            <if test="dormitory != null  and dormitory != ''"> and dormitory = #{dormitory}</if>
+            <if test="homeAddress != null  and homeAddress != ''"> and home_address = #{homeAddress}</if>
+            <if test="emergencyContact != null  and emergencyContact != ''"> and emergency_contact = #{emergencyContact}</if>
+            <if test="emergencyPhone != null  and emergencyPhone != ''"> and emergency_phone = #{emergencyPhone}</if>
+            <if test="status != null "> and status = #{status}</if>
+            <if test="createTime != null "> and create_time = #{createTime}</if>
+            <if test="updateTime != null "> and update_time = #{updateTime}</if>
+        </where>
+    </select>
+    
+    <select id="selectTUserProfileById" parameterType="Long" resultMap="TUserProfileResult">
+        <include refid="selectTUserProfileVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertTUserProfile" parameterType="TUserProfile" useGeneratedKeys="true" keyProperty="id">
+        insert into t_user_profile
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="studentId != null and studentId != ''">student_id,</if>
+            <if test="college != null">college,</if>
+            <if test="major != null">major,</if>
+            <if test="grade != null">grade,</if>
+            <if test="className != null">class_name,</if>
+            <if test="gender != null">gender,</if>
+            <if test="birthDate != null">birth_date,</if>
+            <if test="politicalStatus != null">political_status,</if>
+            <if test="enrollmentDate != null">enrollment_date,</if>
+            <if test="dormitory != null">dormitory,</if>
+            <if test="homeAddress != null">home_address,</if>
+            <if test="emergencyContact != null">emergency_contact,</if>
+            <if test="emergencyPhone != null">emergency_phone,</if>
+            <if test="status != null">status,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="studentId != null and studentId != ''">#{studentId},</if>
+            <if test="college != null">#{college},</if>
+            <if test="major != null">#{major},</if>
+            <if test="grade != null">#{grade},</if>
+            <if test="className != null">#{className},</if>
+            <if test="gender != null">#{gender},</if>
+            <if test="birthDate != null">#{birthDate},</if>
+            <if test="politicalStatus != null">#{politicalStatus},</if>
+            <if test="enrollmentDate != null">#{enrollmentDate},</if>
+            <if test="dormitory != null">#{dormitory},</if>
+            <if test="homeAddress != null">#{homeAddress},</if>
+            <if test="emergencyContact != null">#{emergencyContact},</if>
+            <if test="emergencyPhone != null">#{emergencyPhone},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateTUserProfile" parameterType="TUserProfile">
+        update t_user_profile
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="studentId != null and studentId != ''">student_id = #{studentId},</if>
+            <if test="college != null">college = #{college},</if>
+            <if test="major != null">major = #{major},</if>
+            <if test="grade != null">grade = #{grade},</if>
+            <if test="className != null">class_name = #{className},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="birthDate != null">birth_date = #{birthDate},</if>
+            <if test="politicalStatus != null">political_status = #{politicalStatus},</if>
+            <if test="enrollmentDate != null">enrollment_date = #{enrollmentDate},</if>
+            <if test="dormitory != null">dormitory = #{dormitory},</if>
+            <if test="homeAddress != null">home_address = #{homeAddress},</if>
+            <if test="emergencyContact != null">emergency_contact = #{emergencyContact},</if>
+            <if test="emergencyPhone != null">emergency_phone = #{emergencyPhone},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteTUserProfileById" parameterType="Long">
+        delete from t_user_profile where id = #{id}
+    </delete>
+
+    <delete id="deleteTUserProfileByIds" parameterType="String">
+        delete from t_user_profile where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

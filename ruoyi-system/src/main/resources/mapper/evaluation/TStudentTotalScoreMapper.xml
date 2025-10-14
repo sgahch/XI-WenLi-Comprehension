@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.TStudentTotalScoreMapper">
+    
+    <resultMap type="TStudentTotalScore" id="TStudentTotalScoreResult">
+        <result property="id"    column="id"    />
+        <result property="studentId"    column="student_id"    />
+        <result property="systemId"    column="system_id"    />
+        <result property="totalScore"    column="total_score"    />
+        <result property="moralScore"    column="moral_score"    />
+        <result property="studyScore"    column="study_score"    />
+        <result property="practiceScore"    column="practice_score"    />
+        <result property="innovationScore"    column="innovation_score"    />
+        <result property="otherScore"    column="other_score"    />
+        <result property="ranking"    column="ranking"    />
+        <result property="academicYear"    column="academic_year"    />
+        <result property="semester"    column="semester"    />
+        <result property="status"    column="status"    />
+        <result property="calculateTime"    column="calculate_time"    />
+        <result property="publishTime"    column="publish_time"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectTStudentTotalScoreVo">
+        select id, student_id, system_id, total_score, moral_score, study_score, practice_score, innovation_score, other_score, ranking, academic_year, semester, status, calculate_time, publish_time, create_time, update_time from t_student_total_score
+    </sql>
+
+    <select id="selectTStudentTotalScoreList" parameterType="TStudentTotalScore" resultMap="TStudentTotalScoreResult">
+        <include refid="selectTStudentTotalScoreVo"/>
+        <where>  
+            <if test="studentId != null "> and student_id = #{studentId}</if>
+            <if test="systemId != null "> and system_id = #{systemId}</if>
+            <if test="totalScore != null "> and total_score = #{totalScore}</if>
+            <if test="moralScore != null "> and moral_score = #{moralScore}</if>
+            <if test="studyScore != null "> and study_score = #{studyScore}</if>
+            <if test="practiceScore != null "> and practice_score = #{practiceScore}</if>
+            <if test="innovationScore != null "> and innovation_score = #{innovationScore}</if>
+            <if test="otherScore != null "> and other_score = #{otherScore}</if>
+            <if test="ranking != null "> and ranking = #{ranking}</if>
+            <if test="academicYear != null  and academicYear != ''"> and academic_year = #{academicYear}</if>
+            <if test="semester != null "> and semester = #{semester}</if>
+            <if test="status != null "> and status = #{status}</if>
+            <if test="calculateTime != null "> and calculate_time = #{calculateTime}</if>
+            <if test="publishTime != null "> and publish_time = #{publishTime}</if>
+        </where>
+    </select>
+    
+    <select id="selectTStudentTotalScoreById" parameterType="Long" resultMap="TStudentTotalScoreResult">
+        <include refid="selectTStudentTotalScoreVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertTStudentTotalScore" parameterType="TStudentTotalScore" useGeneratedKeys="true" keyProperty="id">
+        insert into t_student_total_score
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="studentId != null">student_id,</if>
+            <if test="systemId != null">system_id,</if>
+            <if test="totalScore != null">total_score,</if>
+            <if test="moralScore != null">moral_score,</if>
+            <if test="studyScore != null">study_score,</if>
+            <if test="practiceScore != null">practice_score,</if>
+            <if test="innovationScore != null">innovation_score,</if>
+            <if test="otherScore != null">other_score,</if>
+            <if test="ranking != null">ranking,</if>
+            <if test="academicYear != null">academic_year,</if>
+            <if test="semester != null">semester,</if>
+            <if test="status != null">status,</if>
+            <if test="calculateTime != null">calculate_time,</if>
+            <if test="publishTime != null">publish_time,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="studentId != null">#{studentId},</if>
+            <if test="systemId != null">#{systemId},</if>
+            <if test="totalScore != null">#{totalScore},</if>
+            <if test="moralScore != null">#{moralScore},</if>
+            <if test="studyScore != null">#{studyScore},</if>
+            <if test="practiceScore != null">#{practiceScore},</if>
+            <if test="innovationScore != null">#{innovationScore},</if>
+            <if test="otherScore != null">#{otherScore},</if>
+            <if test="ranking != null">#{ranking},</if>
+            <if test="academicYear != null">#{academicYear},</if>
+            <if test="semester != null">#{semester},</if>
+            <if test="status != null">#{status},</if>
+            <if test="calculateTime != null">#{calculateTime},</if>
+            <if test="publishTime != null">#{publishTime},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateTStudentTotalScore" parameterType="TStudentTotalScore">
+        update t_student_total_score
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="studentId != null">student_id = #{studentId},</if>
+            <if test="systemId != null">system_id = #{systemId},</if>
+            <if test="totalScore != null">total_score = #{totalScore},</if>
+            <if test="moralScore != null">moral_score = #{moralScore},</if>
+            <if test="studyScore != null">study_score = #{studyScore},</if>
+            <if test="practiceScore != null">practice_score = #{practiceScore},</if>
+            <if test="innovationScore != null">innovation_score = #{innovationScore},</if>
+            <if test="otherScore != null">other_score = #{otherScore},</if>
+            <if test="ranking != null">ranking = #{ranking},</if>
+            <if test="academicYear != null">academic_year = #{academicYear},</if>
+            <if test="semester != null">semester = #{semester},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="calculateTime != null">calculate_time = #{calculateTime},</if>
+            <if test="publishTime != null">publish_time = #{publishTime},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteTStudentTotalScoreById" parameterType="Long">
+        delete from t_student_total_score where id = #{id}
+    </delete>
+
+    <delete id="deleteTStudentTotalScoreByIds" parameterType="String">
+        delete from t_student_total_score where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

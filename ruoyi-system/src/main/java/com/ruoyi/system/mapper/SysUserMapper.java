@@ -2,6 +2,8 @@ package com.ruoyi.system.mapper;
 
 import java.util.Date;
 import java.util.List;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
 import com.ruoyi.common.core.domain.entity.SysUser;
 
@@ -51,6 +53,14 @@ public interface SysUserMapper
      * @return 用户对象信息
      */
     public SysUser selectUserById(Long userId);
+
+    /**
+     * 通过用户ID列表查询用户列表
+     * 
+     * @param userIds 用户ID列表
+     * @return 用户对象信息集合
+     */
+    public List<SysUser> selectUserByIds(@Param("userIds") List<Long> userIds);
 
     /**
      * 新增用户信息

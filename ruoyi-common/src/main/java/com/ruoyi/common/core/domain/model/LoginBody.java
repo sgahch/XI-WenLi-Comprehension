@@ -8,7 +8,7 @@ package com.ruoyi.common.core.domain.model;
 public class LoginBody
 {
     /**
-     * 用户名
+     * 用户名(学号)
      */
     private String username;
 

@@ -1,5 +1,7 @@
 package com.ruoyi.framework.web.service;
 
+import java.util.HashSet; // +++ 新增导入
+import java.util.Set;     // +++ 新增导入
 import javax.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Component;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.constant.UserConstants;
+import com.ruoyi.common.core.domain.entity.SysRole; // +++ 新增导入
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
@@ -30,7 +33,7 @@ import com.ruoyi.system.service.ISysUserService;
 
 /**
  * 登录校验方法
- * 
+ *
  * @author ruoyi
  */
 @Component
@@ -44,7 +47,7 @@ public class SysLoginService
 
     @Autowired
     private RedisCache redisCache;
-    
+
     @Autowired
     private ISysUserService userService;
 
@@ -53,7 +56,7 @@ public class SysLoginService
 
     /**
      * 登录验证
-     * 
+     *
      * @param username 用户名
      * @param password 密码
      * @param code 验证码
@@ -71,7 +74,7 @@ public class SysLoginService
         try
         {
             UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(username, password);
-            AuthenticationContextHolder.setContext(authenticationToken);
+            AuthenticationContextHolder.setContext(authenticationToken);// 把用户信息存储到ThreadLocal中
             // 该方法会去调用UserDetailsServiceImpl.loadUserByUsername
             authentication = authenticationManager.authenticate(authenticationToken);
         }
@@ -93,15 +96,55 @@ public class SysLoginService
             AuthenticationContextHolder.clearContext();
         }
         AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success")));
-        LoginUser loginUser = (LoginUser) authentication.getPrincipal();
+        LoginUser loginUser = (LoginUser) authentication.getPrincipal();// 取出用户信息
+
+        // === 修改开始 ===
+        // 检查用户是否为学生角色，如果是，且没有任何权限，则赋予一个虚拟权限
+        // 这样可以保证后端流程完整，同时不影响管理员等其他角色的正常权限
+        if (isStudentRole(loginUser) && loginUser.getPermissions().isEmpty())
+        {
+            // 创建一个只包含一个虚拟权限的集合
+            Set<String> defaultPermissions = new HashSet<>();
+            defaultPermissions.add("student:access:flag"); // 这个字符串可以自定义，只是一个标记
+            // 将这个虚拟权限设置给当前登录用户
+            loginUser.setPermissions(defaultPermissions);
+        }
+        // === 修改结束 ===
+
         recordLoginInfo(loginUser.getUserId());
         // 生成token
         return tokenService.createToken(loginUser);
     }
 
+    // === 新增方法 ===
+    /**
+     * 判断用户是否为学生角色
+     * @param loginUser 登录用户信息
+     * @return 如果是学生角色返回true，否则返回false
+     */
+    private boolean isStudentRole(LoginUser loginUser) {
+        // 如果loginUser或其角色列表为空，则直接返回false
+        if (loginUser == null || loginUser.getUser() == null || loginUser.getUser().getRoles() == null) {
+            return false;
+        }
+
+        // 遍历用户的所有角色
+        for (SysRole role : loginUser.getUser().getRoles()) {
+            // 您可以根据角色ID、角色名称或角色标识（roleKey）来判断
+            // 这里以角色标识（roleKey）为例，假设学生的角色标识是 "student"
+            // 请根据您系统中的实际情况修改 "student"
+            if ("student".equals(role.getRoleKey())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    // === 新增方法结束 ===
+
     /**
      * 校验验证码
-     * 
+     *
      * @param username 用户名
      * @param code 验证码
      * @param uuid 唯一标识
