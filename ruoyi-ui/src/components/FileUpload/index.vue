@@ -12,12 +12,14 @@
       :on-success="handleUploadSuccess"
       :show-file-list="false"
       :headers="headers"
+      :on-progress="handleUploadProgress"
       class="upload-file-uploader"
       ref="fileUpload"
       v-if="!disabled"
     >
       <!-- 上传按钮 -->
       <el-button size="mini" type="primary">选取文件</el-button>
+      <el-progress v-if="isUploading" :percentage="uploadPercent" style="margin:8px 0;" />
       <!-- 上传提示 -->
       <div class="el-upload__tip" slot="tip" v-if="showTip">
         请上传
@@ -30,7 +32,7 @@
     <!-- 文件列表 -->
     <transition-group ref="uploadFileList" class="upload-file-list el-upload-list el-upload-list--text" name="el-fade-in-linear" tag="ul">
       <li :key="file.url" class="el-upload-list__item ele-upload-list__item-content" v-for="(file, index) in fileList">
-        <el-link :href="`${baseUrl}${file.url}`" :underline="false" target="_blank">
+        <el-link :href="previewHref(file.url)" :underline="false" target="_blank">
           <span class="el-icon-document"> {{ getFileName(file.name) }} </span>
         </el-link>
         <div class="ele-upload-list__item-content-action">
@@ -44,6 +46,7 @@
 <script>
 import { getToken } from "@/utils/auth"
 import Sortable from 'sortablejs'
+import request from "@/utils/request"
 
 export default {
   name: "FileUpload",
@@ -99,7 +102,10 @@ export default {
       headers: {
         Authorization: "Bearer " + getToken(),
       },
-      fileList: []
+      // 原: fileList: []
+      fileList: [],
+      uploadPercent: 0,
+      isUploading: false
     }
   },
   mounted() {
@@ -185,6 +191,8 @@ export default {
     handleUploadError(err) {
       this.$modal.msgError("上传文件失败，请重试")
       this.$modal.closeLoading()
+      this.isUploading = false
+      this.uploadPercent = 0
     },
     // 上传成功回调
     handleUploadSuccess(res, file) {
@@ -199,10 +207,21 @@ export default {
         this.uploadedSuccessfully()
       }
     },
-    // 删除文件
+    // 删除文件（调用后端删除 MinIO 对象）
     handleDelete(index) {
-      this.fileList.splice(index, 1)
-      this.$emit("input", this.listToString(this.fileList))
+      const file = this.fileList[index]
+      if (!file) return
+      request({
+        url: '/file/delete',
+        method: 'delete',
+        params: { fileUrl: file.url }
+      }).then(() => {
+        this.$modal.msgSuccess('删除成功')
+        this.fileList.splice(index, 1)
+        this.$emit("input", this.listToString(this.fileList))
+      }).catch(() => {
+        this.$modal.msgError('删除失败，请稍后重试')
+      })
     },
     // 上传结束处理
     uploadedSuccessfully() {
@@ -213,6 +232,8 @@ export default {
         this.$emit("input", this.listToString(this.fileList))
         this.$modal.closeLoading()
       }
+      this.isUploading = false
+      this.uploadPercent = 0
     },
     // 获取文件名称
     getFileName(name) {
@@ -231,6 +252,19 @@ export default {
         strs += list[i].url + separator
       }
       return strs != '' ? strs.substr(0, strs.length - 1) : ''
+    },
+    // 预览地址（兼容 MinIO /profile 资源）
+    previewHref(url) {
+      if (!url) return ''
+      if (/^(https?:)?\/\//.test(url)) return url
+      return this.baseUrl + '/common/download/resource?resource=' + encodeURIComponent(url)
+    },
+    // 上传进度显示
+    handleUploadProgress(event, file, fileList) {
+      if (event && typeof event.percent === 'number') {
+        this.uploadPercent = Math.round(event.percent)
+        this.isUploading = this.uploadPercent < 100
+      }
     }
   }
 }

@@ -2,10 +2,14 @@ package com.ruoyi.common.utils.file;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.Locale;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.web.multipart.MultipartFile;
+// Added: SpringUtils to obtain beans/properties in static context
+import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.exception.file.FileNameLengthLimitExceededException;
@@ -15,6 +19,10 @@ import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.uuid.IdUtils;
 import com.ruoyi.common.utils.uuid.Seq;
+import io.minio.BucketExistsArgs;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
 
 /**
  * 文件上传工具类
@@ -133,10 +141,43 @@ public class FileUploadUtils
 
         String fileName = useCustomNaming ? uuidFilename(file) : extractFilename(file);
 
-        String absPath = getAbsoluteFile(baseDir, fileName).getAbsolutePath();
-        file.transferTo(Paths.get(absPath));
-        return getPathFileName(baseDir, fileName);
+        // Modified: save to MinIO instead of local disk to ensure centralized object storage
+        MinioClient minioClient = SpringUtils.getBean(MinioClient.class);
+        String bucket = SpringUtils.getRequiredProperty("minio.bucketName");
+
+        int dirLastIndex = RuoYiConfig.getProfile().length() + 1;
+        String currentDir = StringUtils.substring(baseDir, dirLastIndex);
+        String objectName = currentDir + "/" + fileName;
+
+        try {
+            boolean exists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
+            if (!exists)
+            {
+                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
+            }
+
+            try (InputStream is = file.getInputStream())
+            {
+                PutObjectArgs.Builder builder = PutObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(objectName)
+                        .stream(is, file.getSize(), -1);
+                String contentType = file.getContentType();
+                if (StringUtils.isNotEmpty(contentType))
+                {
+                    builder.contentType(contentType);
+                }
+                minioClient.putObject(builder.build());
+            }
+        } catch (Exception e) {
+            throw new IOException("MinIO upload failed", e);
+        }
+
+        // Keep frontend-compatible resource path under /profile/**
+        return Constants.RESOURCE_PREFIX + "/" + objectName;
     }
+
+    // Removed legacy local filesystem write; now using MinIO object storage.
 
     /**
      * 编码文件名(日期格式目录 + 原文件名 + 序列值 + 后缀)
@@ -186,10 +227,11 @@ public class FileUploadUtils
     public static final void assertAllowed(MultipartFile file, String[] allowedExtension)
             throws FileSizeLimitExceededException, InvalidExtensionException
     {
+        long maxSize = resolveMaxSize();
         long size = file.getSize();
-        if (size > DEFAULT_MAX_SIZE)
+        if (size > maxSize)
         {
-            throw new FileSizeLimitExceededException(DEFAULT_MAX_SIZE / 1024 / 1024);
+            throw new FileSizeLimitExceededException((int)(maxSize / 1024 / 1024));
         }
 
         String fileName = file.getOriginalFilename();
@@ -221,6 +263,38 @@ public class FileUploadUtils
                 throw new InvalidExtensionException(allowedExtension, extension, fileName);
             }
         }
+    }
+
+    // Added: resolve upload size from Spring config (e.g., 10MB), fallback to DEFAULT_MAX_SIZE
+    private static long resolveMaxSize()
+    {
+        try
+        {
+            String v = SpringUtils.getRequiredProperty("spring.servlet.multipart.max-file-size");
+            return parseSizeToBytes(v);
+        }
+        catch (Exception ignore)
+        {
+            return DEFAULT_MAX_SIZE;
+        }
+    }
+
+    private static long parseSizeToBytes(String value)
+    {
+        String s = value.trim().toUpperCase(Locale.ROOT);
+        if (s.endsWith("MB"))
+        {
+            return Long.parseLong(s.substring(0, s.length() - 2)) * 1024 * 1024;
+        }
+        if (s.endsWith("KB"))
+        {
+            return Long.parseLong(s.substring(0, s.length() - 2)) * 1024;
+        }
+        if (s.endsWith("B"))
+        {
+            return Long.parseLong(s.substring(0, s.length() - 1));
+        }
+        return Long.parseLong(s);
     }
 
     /**

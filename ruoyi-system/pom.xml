@@ -47,6 +47,22 @@
             <artifactId>velocity-engine-core</artifactId>
         </dependency>
 
+        <!-- langchain4j 智能聊天 -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.0.0-beta3</version>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+
+
     </dependencies>
 
 </project>

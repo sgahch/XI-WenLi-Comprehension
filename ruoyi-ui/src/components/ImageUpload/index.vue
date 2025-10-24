@@ -18,9 +18,12 @@
       :file-list="fileList"
       :on-preview="handlePictureCardPreview"
       :class="{hide: this.fileList.length >= this.limit}"
+      :on-progress="handleUploadProgress"
     >
       <i class="el-icon-plus"></i>
     </el-upload>
+
+    <el-progress v-if="isUploading" :percentage="uploadPercent" style="margin:8px 0;" />
 
     <!-- 上传提示 -->
     <div class="el-upload__tip" slot="tip" v-if="showTip && !disabled">
@@ -48,6 +51,7 @@
 import { getToken } from "@/utils/auth"
 import { isExternal } from "@/utils/validate"
 import Sortable from 'sortablejs'
+import request from "@/utils/request"
 
 export default {
   props: {
@@ -104,7 +108,10 @@ export default {
       headers: {
         Authorization: "Bearer " + getToken(),
       },
-      fileList: []
+      // 原: fileList: []
+      fileList: [],
+      uploadPercent: 0,
+      isUploading: false
     }
   },
   mounted() {
@@ -130,10 +137,10 @@ export default {
           // 然后将数组转为对象数组
           this.fileList = list.map(item => {
             if (typeof item === "string") {
-              if (item.indexOf(this.baseUrl) === -1 && !isExternal(item)) {
-                  item = { name: this.baseUrl + item, url: this.baseUrl + item }
+              if (!isExternal(item)) {
+                item = { name: item, url: item }
               } else {
-                  item = { name: item, url: item }
+                item = { name: item, url: item }
               }
             }
             return item
@@ -196,7 +203,7 @@ export default {
     // 上传成功回调
     handleUploadSuccess(res, file) {
       if (res.code === 200) {
-        this.uploadList.push({ name: res.fileName, url: res.fileName })
+        this.uploadList.push({ name: res.fileName, url: this.previewHref(res.fileName) })
         this.uploadedSuccessfully()
       } else {
         this.number--
@@ -210,14 +217,25 @@ export default {
     handleDelete(file) {
       const findex = this.fileList.map(f => f.name).indexOf(file.name)
       if (findex > -1) {
-        this.fileList.splice(findex, 1)
-        this.$emit("input", this.listToString(this.fileList))
+        request({
+          url: '/file/delete',
+          method: 'delete',
+          params: { fileUrl: this.fileList[findex].url }
+        }).then(() => {
+          this.$modal.msgSuccess('删除成功')
+          this.fileList.splice(findex, 1)
+          this.$emit("input", this.listToString(this.fileList))
+        }).catch(() => {
+          this.$modal.msgError('删除失败，请稍后重试')
+        })
       }
     },
     // 上传失败
     handleUploadError() {
       this.$modal.msgError("上传图片失败，请重试")
       this.$modal.closeLoading()
+      this.isUploading = false
+      this.uploadPercent = 0
     },
     // 上传结束处理
     uploadedSuccessfully() {
@@ -228,10 +246,12 @@ export default {
         this.$emit("input", this.listToString(this.fileList))
         this.$modal.closeLoading()
       }
+      this.isUploading = false
+      this.uploadPercent = 0
     },
     // 预览
     handlePictureCardPreview(file) {
-      this.dialogImageUrl = file.url
+      this.dialogImageUrl = this.previewHref(file.url)
       this.dialogVisible = true
     },
     // 对象转成指定字符串分隔
@@ -240,10 +260,33 @@ export default {
       separator = separator || ","
       for (let i in list) {
         if (list[i].url) {
-          strs += list[i].url.replace(this.baseUrl, "") + separator
+          const url = list[i].url
+          const base = this.baseUrl
+          if (url.startsWith(base + '/common/download/resource')) {
+            const idx = url.indexOf('?resource=')
+            const path = idx > -1 ? decodeURIComponent(url.substring(idx + 10)) : url
+            strs += path + separator
+          } else if (url.startsWith(base)) {
+            strs += url.replace(base, "") + separator
+          } else {
+            strs += url + separator
+          }
         }
       }
       return strs != '' ? strs.substr(0, strs.length - 1) : ''
+    },
+    // 预览地址（兼容 MinIO /profile 资源）
+    previewHref(url) {
+      if (!url) return ''
+      if (/^(https?:)?\/\//.test(url)) return url
+      return this.baseUrl + '/common/download/resource?resource=' + encodeURIComponent(url)
+    },
+    // 上传进度显示
+    handleUploadProgress(event, file, fileList) {
+      if (event && typeof event.percent === 'number') {
+        this.uploadPercent = Math.round(event.percent)
+        this.isUploading = this.uploadPercent < 100
+      }
     }
   }
 }

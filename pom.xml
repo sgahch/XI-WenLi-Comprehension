@@ -241,6 +241,13 @@
                 <scope>provided</scope>
             </dependency>
 
+            <!-- langchain4j -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-community-dashscope-spring-boot-starter</artifactId>
+                <version>1.0.0-beta3</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
@@ -270,6 +277,17 @@
     </build>
 
     <repositories>
+        <repository>
+            <id>central</id>
+            <name>Maven Central</name>
+            <url>https://repo1.maven.org/maven2/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
         <repository>
             <id>public</id>
             <name>aliyun nexus</name>

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.TEvaluationItemConfigMapper">
+
+    <resultMap id="TEvaluationItemConfigResult" type="com.ruoyi.system.domain.TEvaluationItemConfig">
+        <id property="id" column="id" />
+        <result property="dimensionType" column="dimension_type" />
+        <result property="itemCode" column="item_code" />
+        <result property="itemName" column="item_name" />
+        <result property="itemDescription" column="item_description" />
+        <result property="maxScore" column="max_score" />
+        <result property="minScore" column="min_score" />
+        <result property="defaultScore" column="default_score" />
+        <result property="scoreType" column="score_type" />
+        <result property="scoreOptions" column="score_options" />
+        <result property="weight" column="weight" />
+        <result property="sortOrder" column="sort_order" />
+        <result property="isRequired" column="is_required" />
+        <result property="isActive" column="is_active" />
+        <result property="applicableGrades" column="applicable_grades" />
+        <result property="applicableMajors" column="applicable_majors" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, dimension_type, item_code, item_name, item_description,
+        max_score, min_score, default_score, score_type, score_options,
+        weight, sort_order, is_required, is_active, applicable_grades,
+        applicable_majors, create_by, create_time, update_by, update_time, remark
+    </sql>
+
+    <!-- 查询单条 -->
+    <select id="selectTEvaluationItemConfigById" resultMap="TEvaluationItemConfigResult">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_evaluation_item_config
+        WHERE id = #{id}
+    </select>
+
+    <!-- 列表查询（带条件） -->
+    <select id="selectTEvaluationItemConfigList" resultMap="TEvaluationItemConfigResult">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_evaluation_item_config
+        <where>
+            <if test="dimensionType != null">AND dimension_type = #{dimensionType}</if>
+            <if test="itemCode != null and itemCode != ''">AND item_code = #{itemCode}</if>
+            <if test="itemName != null and itemName != ''">AND item_name LIKE CONCAT('%', #{itemName}, '%')</if>
+            <if test="isActive != null">AND is_active = #{isActive}</if>
+        </where>
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <!-- 根据维度查询 -->
+    <select id="selectByDimensionType" resultMap="TEvaluationItemConfigResult">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_evaluation_item_config
+        WHERE dimension_type = #{dimensionType}
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <!-- 维度+状态查询 -->
+    <select id="selectByDimensionTypeAndStatus" resultMap="TEvaluationItemConfigResult">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_evaluation_item_config
+        WHERE dimension_type = #{dimensionType}
+          AND is_active = #{isActive}
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <!-- 根据项目编码查询 -->
+    <select id="selectByItemCode" resultMap="TEvaluationItemConfigResult">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_evaluation_item_config
+        WHERE item_code = #{itemCode}
+        LIMIT 1
+    </select>
+
+    <!-- 新增 -->
+    <insert id="insertTEvaluationItemConfig" parameterType="com.ruoyi.system.domain.TEvaluationItemConfig" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_evaluation_item_config (
+            dimension_type, item_code, item_name, item_description,
+            max_score, min_score, default_score, score_type, score_options,
+            weight, sort_order, is_required, is_active, applicable_grades,
+            applicable_majors, create_by, create_time, remark
+        ) VALUES (
+            #{dimensionType}, #{itemCode}, #{itemName}, #{itemDescription},
+            #{maxScore}, #{minScore}, #{defaultScore}, #{scoreType}, #{scoreOptions},
+            #{weight}, #{sortOrder}, #{isRequired}, #{isActive}, #{applicableGrades},
+            #{applicableMajors}, #{createBy}, NOW(), #{remark}
+        )
+    </insert>
+
+    <!-- 修改 -->
+    <update id="updateTEvaluationItemConfig" parameterType="com.ruoyi.system.domain.TEvaluationItemConfig">
+        UPDATE t_evaluation_item_config
+        <set>
+            <if test="dimensionType != null">dimension_type = #{dimensionType},</if>
+            <if test="itemCode != null">item_code = #{itemCode},</if>
+            <if test="itemName != null">item_name = #{itemName},</if>
+            <if test="itemDescription != null">item_description = #{itemDescription},</if>
+            <if test="maxScore != null">max_score = #{maxScore},</if>
+            <if test="minScore != null">min_score = #{minScore},</if>
+            <if test="defaultScore != null">default_score = #{defaultScore},</if>
+            <if test="scoreType != null">score_type = #{scoreType},</if>
+            <if test="scoreOptions != null">score_options = #{scoreOptions},</if>
+            <if test="weight != null">weight = #{weight},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="isRequired != null">is_required = #{isRequired},</if>
+            <if test="isActive != null">is_active = #{isActive},</if>
+            <if test="applicableGrades != null">applicable_grades = #{applicableGrades},</if>
+            <if test="applicableMajors != null">applicable_majors = #{applicableMajors},</if>
+            update_by = #{updateBy},
+            update_time = NOW(),
+            <if test="remark != null">remark = #{remark},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除单条 -->
+    <delete id="deleteTEvaluationItemConfigById">
+        DELETE FROM t_evaluation_item_config WHERE id = #{id}
+    </delete>
+
+    <!-- 批量删除 -->
+    <delete id="deleteTEvaluationItemConfigByIds">
+        DELETE FROM t_evaluation_item_config WHERE id IN
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <!-- 批量更新状态 -->
+    <update id="batchUpdateStatus">
+        UPDATE t_evaluation_item_config SET is_active = #{isActive}
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <!-- 获取维度最大排序号 -->
+    <select id="getMaxSortOrderByDimension" resultType="java.lang.Integer">
+        SELECT MAX(sort_order) FROM t_evaluation_item_config WHERE dimension_type = #{dimensionType}
+    </select>
+
+</mapper>

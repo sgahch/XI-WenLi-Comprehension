@@ -132,7 +132,7 @@ public class CommonController
     }
 
     /**
-     * 本地资源通用下载
+     * 本地资源通用下载（改为从 MinIO 获取）
      */
     @GetMapping("/download/resource")
     public void resourceDownload(String resource, HttpServletRequest request, HttpServletResponse response)
@@ -144,15 +144,31 @@ public class CommonController
             {
                 throw new Exception(StringUtils.format("资源文件({})非法，不允许下载。 ", resource));
             }
-            // 本地资源路径
-            String localPath = RuoYiConfig.getProfile();
-            // 数据库资源地址
-            String downloadPath = localPath + FileUtils.stripPrefix(resource);
+            // MinIO 对象路径：移除 /profile/ 前缀
+            String objectPath = com.ruoyi.common.utils.StringUtils.substringAfter(resource, com.ruoyi.common.constant.Constants.RESOURCE_PREFIX + "/");
             // 下载名称
-            String downloadName = StringUtils.substringAfterLast(downloadPath, "/");
-            response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
-            FileUtils.setAttachmentResponseHeader(response, downloadName);
-            FileUtils.writeBytes(downloadPath, response.getOutputStream());
+            String downloadName = com.ruoyi.common.utils.StringUtils.substringAfterLast(objectPath, "/");
+
+            // 获取 MinIO 客户端和桶名
+            io.minio.MinioClient minioClient = com.ruoyi.common.utils.spring.SpringUtils.getBean(io.minio.MinioClient.class);
+            String bucketName = com.ruoyi.common.utils.spring.SpringUtils.getRequiredProperty("minio.bucketName");
+
+            // 预取对象信息以尝试设置contentType
+            try {
+                io.minio.StatObjectResponse stat = minioClient.statObject(
+                        io.minio.StatObjectArgs.builder().bucket(bucketName).object(objectPath).build()
+                );
+                String contentType = stat.contentType();
+                response.setContentType(com.ruoyi.common.utils.StringUtils.isNotEmpty(contentType) ? contentType : MediaType.APPLICATION_OCTET_STREAM_VALUE);
+            } catch (Exception ignore) {
+                response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+            }
+
+            com.ruoyi.common.utils.file.FileUtils.setAttachmentResponseHeader(response, downloadName);
+            try (java.io.InputStream is = minioClient.getObject(
+                    io.minio.GetObjectArgs.builder().bucket(bucketName).object(objectPath).build())) {
+                org.apache.commons.io.IOUtils.copy(is, response.getOutputStream());
+            }
         }
         catch (Exception e)
         {

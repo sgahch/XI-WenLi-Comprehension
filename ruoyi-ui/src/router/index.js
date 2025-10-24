@@ -176,8 +176,18 @@ Router.prototype.replace = function push(location) {
   return routerReplace.call(this, location).catch(err => err)
 }
 
-export default new Router({
+const createRouter = () => new Router({
   mode: 'history', // 去掉url中的#
   scrollBehavior: () => ({ y: 0 }),
   routes: constantRoutes
 })
+
+const router = createRouter()
+
+// 重置路由
+export function resetRouter() {
+  const newRouter = createRouter()
+  router.matcher = newRouter.matcher // 重置路由匹配器
+}
+
+export default router

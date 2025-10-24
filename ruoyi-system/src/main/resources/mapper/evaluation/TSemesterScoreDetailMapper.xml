@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.TSemesterScoreDetailMapper">
+
+  <!-- 学期成绩明细列表查询 -->
+  <select id="selectTSemesterScoreDetailList"
+          parameterType="com.ruoyi.system.domain.TSemesterScoreDetail"
+          resultType="com.ruoyi.system.domain.TSemesterScoreDetail">
+    SELECT *
+    FROM t_semester_score_detail
+    <where>
+      <if test="studentId != null and studentId != ''">
+        AND student_id = #{studentId}
+      </if>
+      <if test="academicYear != null and academicYear != ''">
+        AND academic_year = #{academicYear}
+      </if>
+      <if test="semester != null">
+        AND semester = #{semester}
+      </if>
+      <if test="status != null">
+        AND status = #{status}
+      </if>
+      <if test="classId != null and classId != ''">
+        AND class_id = #{classId}
+      </if>
+      <if test="majorId != null and majorId != ''">
+        AND major_id = #{majorId}
+      </if>
+    </where>
+    ORDER BY id DESC
+  </select>
+
+  <!-- 主键查询（供其他功能使用） -->
+  <select id="selectTSemesterScoreDetailById"
+          parameterType="long"
+          resultType="com.ruoyi.system.domain.TSemesterScoreDetail">
+    SELECT * FROM t_semester_score_detail WHERE id = #{id}
+  </select>
+
+  <!-- 新增（供其他功能使用） -->
+  <insert id="insertTSemesterScoreDetail"
+          parameterType="com.ruoyi.system.domain.TSemesterScoreDetail">
+    INSERT INTO t_semester_score_detail(
+      student_id, student_name, academic_year, semester,
+      intellectual_score, intellectual_rank, intellectual_details,
+      moral_score, moral_rank, moral_details,
+      physical_score, physical_rank, physical_details,
+      aesthetic_score, aesthetic_rank, aesthetic_details,
+      labor_score, labor_rank, labor_details,
+      total_score, class_rank, major_rank,
+      class_id, class_name, major_id, major_name,
+      status, submit_time, audit_time, auditor_id, audit_remark,
+      create_time, update_time
+    ) VALUES(
+      #{studentId}, #{studentName}, #{academicYear}, #{semester},
+      #{intellectualScore}, #{intellectualRank}, #{intellectualDetails},
+      #{moralScore}, #{moralRank}, #{moralDetails},
+      #{physicalScore}, #{physicalRank}, #{physicalDetails},
+      #{aestheticScore}, #{aestheticRank}, #{aestheticDetails},
+      #{laborScore}, #{laborRank}, #{laborDetails},
+      #{totalScore}, #{classRank}, #{majorRank},
+      #{classId}, #{className}, #{majorId}, #{majorName},
+      #{status}, #{submitTime}, #{auditTime}, #{auditorId}, #{auditRemark},
+      #{createTime}, #{updateTime}
+    )
+  </insert>
+
+  <!-- 修改（供其他功能使用） -->
+  <update id="updateTSemesterScoreDetail"
+          parameterType="com.ruoyi.system.domain.TSemesterScoreDetail">
+    UPDATE t_semester_score_detail
+    <set>
+      <if test="studentId != null">student_id = #{studentId},</if>
+      <if test="studentName != null">student_name = #{studentName},</if>
+      <if test="academicYear != null">academic_year = #{academicYear},</if>
+      <if test="semester != null">semester = #{semester},</if>
+      <if test="intellectualScore != null">intellectual_score = #{intellectualScore},</if>
+      <if test="intellectualRank != null">intellectual_rank = #{intellectualRank},</if>
+      <if test="intellectualDetails != null">intellectual_details = #{intellectualDetails},</if>
+      <if test="moralScore != null">moral_score = #{moralScore},</if>
+      <if test="moralRank != null">moral_rank = #{moralRank},</if>
+      <if test="moralDetails != null">moral_details = #{moralDetails},</if>
+      <if test="physicalScore != null">physical_score = #{physicalScore},</if>
+      <if test="physicalRank != null">physical_rank = #{physicalRank},</if>
+      <if test="physicalDetails != null">physical_details = #{physicalDetails},</if>
+      <if test="aestheticScore != null">aesthetic_score = #{aestheticScore},</if>
+      <if test="aestheticRank != null">aesthetic_rank = #{aestheticRank},</if>
+      <if test="aestheticDetails != null">aesthetic_details = #{aestheticDetails},</if>
+      <if test="laborScore != null">labor_score = #{laborScore},</if>
+      <if test="laborRank != null">labor_rank = #{laborRank},</if>
+      <if test="laborDetails != null">labor_details = #{laborDetails},</if>
+      <if test="totalScore != null">total_score = #{totalScore},</if>
+      <if test="classRank != null">class_rank = #{classRank},</if>
+      <if test="majorRank != null">major_rank = #{majorRank},</if>
+      <if test="classId != null">class_id = #{classId},</if>
+      <if test="className != null">class_name = #{className},</if>
+      <if test="majorId != null">major_id = #{majorId},</if>
+      <if test="majorName != null">major_name = #{majorName},</if>
+      <if test="status != null">status = #{status},</if>
+      <if test="submitTime != null">submit_time = #{submitTime},</if>
+      <if test="auditTime != null">audit_time = #{auditTime},</if>
+      <if test="auditorId != null">auditor_id = #{auditorId},</if>
+      <if test="auditRemark != null">audit_remark = #{auditRemark},</if>
+      <if test="updateTime != null">update_time = #{updateTime}</if>
+    </set>
+    WHERE id = #{id}
+  </update>
+
+  <!-- 删除（供其他功能使用） -->
+  <delete id="deleteTSemesterScoreDetailById" parameterType="long">
+    DELETE FROM t_semester_score_detail WHERE id = #{id}
+  </delete>
+
+  <delete id="deleteTSemesterScoreDetailByIds" parameterType="long">
+    DELETE FROM t_semester_score_detail WHERE id IN
+    <foreach collection="array" item="id" separator="," open="(" close=")">#{id}</foreach>
+  </delete>
+
+</mapper>

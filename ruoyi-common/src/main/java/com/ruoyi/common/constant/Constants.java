@@ -21,6 +21,11 @@ public class Constants
     public static final String GBK = "GBK";
 
     /**
+     * 内容类型
+     */
+    public static final String CONTENT_TYPE = "Content-Type";
+
+    /**
      * 系统语言
      */
     public static final Locale DEFAULT_LOCALE = Locale.SIMPLIFIED_CHINESE;

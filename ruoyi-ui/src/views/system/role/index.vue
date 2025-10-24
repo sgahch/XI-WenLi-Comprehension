@@ -141,6 +141,8 @@
                 v-hasPermi="['system:role:edit']">数据权限</el-dropdown-item>
               <el-dropdown-item command="handleAuthUser" icon="el-icon-user"
                 v-hasPermi="['system:role:edit']">分配用户</el-dropdown-item>
+              <el-dropdown-item v-if="scope.row.roleKey === 'monitor'" command="handleViewUsers" icon="el-icon-view"
+                v-hasPermi="['system:role:edit']">查看班委</el-dropdown-item>
             </el-dropdown-menu>
           </el-dropdown>
         </template>
@@ -463,6 +465,9 @@ export default {
         case "handleAuthUser":
           this.handleAuthUser(row)
           break
+        case "handleViewUsers":
+          this.handleViewUsers(row)
+          break
         default:
           break
       }
@@ -548,6 +553,11 @@ export default {
     },
     /** 分配用户操作 */
     handleAuthUser: function(row) {
+      const roleId = row.roleId
+      this.$router.push("/system/role-auth/user/" + roleId)
+    },
+    /** 查看班委用户操作 */
+    handleViewUsers: function(row) {
       const roleId = row.roleId
       this.$router.push("/system/role-auth/user/" + roleId)
     },

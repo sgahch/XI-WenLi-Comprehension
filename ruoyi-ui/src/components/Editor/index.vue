@@ -176,6 +176,14 @@ export default {
       }
       return true
     },
+    getResourceUrl(path) {
+      if (!path) return path
+      // 若为绝对地址或 blob/base64，直接返回
+      if (/^(https?:)?\/\//.test(path) || path.startsWith('blob:') || path.startsWith('data:')) {
+        return path
+      }
+      return process.env.VUE_APP_BASE_API + '/common/download/resource?resource=' + encodeURIComponent(path)
+    },
     handleUploadSuccess(res, file) {
       // 如果上传成功
       if (res.code == 200) {
@@ -183,8 +191,9 @@ export default {
         let quill = this.Quill
         // 获取光标所在位置
         let length = quill.getSelection().index
-        // 插入图片  res.url为服务器返回的图片地址
-        quill.insertEmbed(length, "image", process.env.VUE_APP_BASE_API + res.fileName)
+        // 插入图片，使用资源下载接口包装 /profile 路径
+        const imgUrl = this.getResourceUrl(res.fileName)
+        quill.insertEmbed(length, "image", imgUrl)
         // 调整光标到最后
         quill.setSelection(length + 1)
       } else {
@@ -252,46 +261,6 @@ export default {
 }
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="huge"]::before,
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="huge"]::before {
-  content: "32px";
-}
-.ql-snow .ql-picker.ql-header .ql-picker-label::before,
-.ql-snow .ql-picker.ql-header .ql-picker-item::before {
-  content: "文本";
-}
-.ql-snow .ql-picker.ql-header .ql-picker-label[data-value="1"]::before,
-.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="1"]::before {
-  content: "标题1";
-}
-.ql-snow .ql-picker.ql-header .ql-picker-label[data-value="2"]::before,
-.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="2"]::before {
-  content: "标题2";
-}
-.ql-snow .ql-picker.ql-header .ql-picker-label[data-value="3"]::before,
-.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="3"]::before {
-  content: "标题3";
-}
-.ql-snow .ql-picker.ql-header .ql-picker-label[data-value="4"]::before,
-.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="4"]::before {
-  content: "标题4";
-}
-.ql-snow .ql-picker.ql-header .ql-picker-label[data-value="5"]::before,
-.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="5"]::before {
-  content: "标题5";
-}
-.ql-snow .ql-picker.ql-header .ql-picker-label[data-value="6"]::before,
-.ql-snow .ql-picker.ql-header .ql-picker-item[data-value="6"]::before {
-  content: "标题6";
-}
-.ql-snow .ql-picker.ql-font .ql-picker-label::before,
-.ql-snow .ql-picker.ql-font .ql-picker-item::before {
-  content: "标准字体";
-}
-.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="serif"]::before,
-.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="serif"]::before {
-  content: "衬线字体";
-}
-.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="monospace"]::before,
-.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="monospace"]::before {
-  content: "等宽字体";
+  content: "22px";
 }
 </style>

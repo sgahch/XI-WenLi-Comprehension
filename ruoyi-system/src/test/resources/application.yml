@@ -1,0 +1,8 @@
+langchain4j:
+  community:
+    dashscope:
+      chat-model:
+        api-key: sk-3ab4ef8c01e04524b06076d36f3b5d93
+        model-name: qwen-plus-2025-07-28
+        log-request: true
+        log-responses: true

@@ -30,6 +30,7 @@ public class AjaxResult extends HashMap<String, Object>
     {
     }
 
+
     /**
      * 初始化一个新创建的 AjaxResult 对象
      * 

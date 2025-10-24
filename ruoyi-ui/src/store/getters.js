@@ -8,8 +8,17 @@ const getters = {
   token: state => state.user.token,
   avatar: state => state.user.avatar,
   id: state => state.user.id,
+  userId: state => state.user.id, // 添加userId getter，映射到user.id
   name: state => state.user.name,
   nickName: state => state.user.nickName,
+  userInfo: state => ({ // 添加userInfo getter，包含用户基本信息
+    id: state.user.id,
+    name: state.user.name,
+    nickName: state.user.nickName,
+    avatar: state.user.avatar,
+    roles: state.user.roles,
+    permissions: state.user.permissions
+  }),
   introduction: state => state.user.introduction,
   roles: state => state.user.roles,
   permissions: state => state.user.permissions,

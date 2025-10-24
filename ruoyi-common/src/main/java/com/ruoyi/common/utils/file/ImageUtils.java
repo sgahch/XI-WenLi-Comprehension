@@ -78,10 +78,11 @@ public class ImageUtils
             }
             else
             {
-                // 本机地址
-                String localPath = RuoYiConfig.getProfile();
-                String downloadPath = localPath + StringUtils.substringAfter(url, Constants.RESOURCE_PREFIX);
-                in = new FileInputStream(downloadPath);
+                // 从 MinIO 读取对象
+                String objectPath = com.ruoyi.common.utils.StringUtils.substringAfter(url, com.ruoyi.common.constant.Constants.RESOURCE_PREFIX + "/");
+                io.minio.MinioClient minioClient = com.ruoyi.common.utils.spring.SpringUtils.getBean(io.minio.MinioClient.class);
+                String bucketName = com.ruoyi.common.utils.spring.SpringUtils.getRequiredProperty("minio.bucketName");
+                in = minioClient.getObject(io.minio.GetObjectArgs.builder().bucket(bucketName).object(objectPath).build());
             }
             return IOUtils.toByteArray(in);
         }

@@ -1,5 +1,5 @@
 import auth from '@/plugins/auth'
-import router, { constantRoutes, dynamicRoutes } from '@/router'
+import router, { constantRoutes, dynamicRoutes, resetRouter } from '@/router'
 import { getRouters } from '@/api/menu'
 import Layout from '@/layout/index'
 import ParentView from '@/components/ParentView'
@@ -32,6 +32,9 @@ const permission = {
     // 生成路由
     GenerateRoutes({ commit }) {
       return new Promise(resolve => {
+        // ✨✨✨ 在所有逻辑的最开始，就调用 resetRouter ✨✨✨
+        resetRouter()
+        
         // 向后端请求路由数据
         getRouters().then(res => {
           const sdata = JSON.parse(JSON.stringify(res.data))

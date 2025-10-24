@@ -38,6 +38,7 @@
           v-model="queryParams.grade"
           placeholder="请输入年级"
           clearable
+
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
@@ -210,7 +211,7 @@
         </template>
       </el-table-column>
     </el-table>
-    
+
     <pagination
       v-show="total>0"
       :total="total"

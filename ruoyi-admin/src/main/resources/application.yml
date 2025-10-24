@@ -131,6 +131,32 @@ xss:
   # 过滤开关
   enabled: true
   # 排除链接（多个用逗号分隔）
-  excludes: /system/notice
+  excludes: /system/notice,/ai/chat
   # 匹配链接
   urlPatterns: /system/*,/monitor/*,/tool/*
+
+# 对象存储 MinIO 配置
+minio:
+  # 访问地址
+  endpoint: http://192.168.182.128:9000
+  accessKey: fmtfmAGgH2ihdfIaIA67
+  secretKey: 84jCdCEqnmhjl2LL3VI0TF9TDqvZABCJq0VdBbpI
+  # 桶名称
+  bucketName: blog
+  # 是否使用 https
+  secure: false
+  # 连接超时/读写超时（毫秒）及连接池参数
+  connectTimeoutMs: 10000
+  readTimeoutMs: 30000
+  writeTimeoutMs: 30000
+  maxIdleConnections: 10
+  keepAliveDurationMs: 300000
+
+langchain4j:
+  community:
+    dashscope:
+      chat-model:
+        api-key: sk-3ab4ef8c01e04524b06076d36f3b5d93
+        model-name: qwen-plus-2025-07-28
+        log-request: true
+        log-responses: true
