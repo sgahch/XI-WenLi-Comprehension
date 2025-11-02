@@ -159,8 +159,10 @@ export default {
       // 校检文件类型
       if (this.fileType) {
         const fileName = file.name.split('.')
-        const fileExt = fileName[fileName.length - 1]
-        const isTypeOk = this.fileType.indexOf(fileExt) >= 0
+        const fileExt = fileName[fileName.length - 1].toLowerCase() // 转换为小写
+        // 将允许的文件类型也转换为小写进行比较
+        const allowedTypes = this.fileType.map(type => type.toLowerCase())
+        const isTypeOk = allowedTypes.indexOf(fileExt) >= 0
         if (!isTypeOk) {
           this.$modal.msgError(`文件格式不正确，请上传${this.fileType.join("/")}格式文件!`)
           return false
@@ -197,7 +199,14 @@ export default {
     // 上传成功回调
     handleUploadSuccess(res, file) {
       if (res.code === 200) {
-        this.uploadList.push({ name: res.fileName, url: res.fileName })
+        this.uploadList.push({ 
+          name: res.fileName, 
+          url: res.url,
+          originalName: res.originalFilename || file.name,
+          fileName: res.newFileName || res.fileName,
+          fileSize: file.size,
+          fileType: this.getFileExtension(file.name)
+        })
         this.uploadedSuccessfully()
       } else {
         this.number--
@@ -265,6 +274,13 @@ export default {
         this.uploadPercent = Math.round(event.percent)
         this.isUploading = this.uploadPercent < 100
       }
+    },
+    // 获取文件扩展名
+    getFileExtension(fileName) {
+      if (!fileName) return 'TXT'
+      const lastDotIndex = fileName.lastIndexOf('.')
+      if (lastDotIndex === -1) return 'TXT'
+      return fileName.substring(lastDotIndex + 1).toUpperCase()
     }
   }
 }

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.EvaluationAttachmentMapper">
+
+    <resultMap id="EvaluationAttachmentResult" type="com.ruoyi.system.domain.EvaluationAttachment">
+        <id property="id" column="id" />
+        <result property="detailId" column="detail_id" />
+        <result property="fileName" column="file_name" />
+        <result property="originalName" column="original_name" />
+        <result property="filePath" column="file_path" />
+        <result property="fileSize" column="file_size" />
+        <result property="fileType" column="file_type" />
+        <result property="uploadTime" column="upload_time" />
+        <result property="uploadBy" column="upload_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <delete id="deleteByDetailIds" parameterType="long">
+        delete from evaluation_attachment where detail_id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <insert id="insertEvaluationAttachment" parameterType="com.ruoyi.system.domain.EvaluationAttachment" useGeneratedKeys="true" keyProperty="id">
+        insert into evaluation_attachment (
+            detail_id,
+            file_name,
+            original_name,
+            file_path,
+            file_size,
+            file_type,
+            url,
+            upload_time,
+            upload_by,
+            create_time,
+            update_time
+        ) values (
+            #{detailId},
+            #{fileName},
+            #{originalName},
+            #{filePath},
+            #{fileSize},
+            #{fileType},
+            #{url},
+            #{uploadTime},
+            #{uploadBy},
+            #{createTime},
+            #{updateTime}
+        )
+    </insert>
+
+    <insert id="insertBatch" parameterType="java.util.List">
+        insert into evaluation_attachment (
+            detail_id,
+            file_name,
+            original_name,
+            file_path,
+            file_size,
+            file_type,
+            url,
+            upload_time,
+            upload_by,
+            create_time,
+            update_time
+        ) values
+        <foreach collection="list" item="a" separator=",">
+            (
+                #{a.detailId},
+                #{a.fileName},
+                #{a.originalName},
+                #{a.filePath},
+                #{a.fileSize},
+                #{a.fileType},
+                #{a.url},
+                #{a.uploadTime},
+                #{a.uploadBy},
+                #{a.createTime},
+                #{a.updateTime}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

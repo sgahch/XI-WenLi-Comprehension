@@ -49,6 +49,18 @@
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
+
+      <el-form-item label="性别" prop="gender">
+        <el-select
+          v-model="queryParams.gender"
+          placeholder="请选择性别"
+          clearable
+          >
+          <el-option label="男" value="0"/>
+          <el-option label="女" value="1"/>
+        </el-select>
+      </el-form-item>
+
       <el-form-item label="出生日期" prop="birthDate">
         <el-date-picker clearable
           v-model="queryParams.birthDate"
@@ -240,6 +252,14 @@
         <el-form-item label="班级名称" prop="className">
           <el-input v-model="form.className" placeholder="请输入班级名称" />
         </el-form-item>
+        <el-form-item label="性别" prop="gender">
+          <el-select v-model="form.gender" placeholder="请选择性别" clearable>
+            <el-option label="男" value="0" />
+            <el-option label="女" value="1" />
+            <el-option label="未知" value="2" />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="出生日期" prop="birthDate">
           <el-date-picker clearable
             v-model="form.birthDate"
@@ -312,15 +332,15 @@ export default {
         major: null,
         grade: null,
         className: null,
-        gender: null,
+        gender: '0',
         birthDate: null,
-        politicalStatus: null,
+        politicalStatus: "群众",
         enrollmentDate: null,
         dormitory: null,
         homeAddress: null,
         emergencyContact: null,
         emergencyPhone: null,
-        status: null,
+        status: 1,
         createTime: null,
         updateTime: null
       },

@@ -1,6 +1,6 @@
 <template>
   <div class="score-analysis-chart">
-    <!-- 图表控制面板 -->
+    <!-- 控制面板 -->
     <div class="chart-controls">
       <el-row :gutter="20">
         <el-col :span="6">
@@ -19,8 +19,8 @@
             <el-option label="全部" value="all" />
           </el-select>
         </el-col>
-        <el-col :span="6">
-          <el-select v-model="selectedDimension" placeholder="选择维度" @change="handleDimensionChange" v-if="chartType === 'trend'">
+        <el-col :span="6" v-if="chartType === 'trend'">
+          <el-select v-model="selectedDimension" placeholder="选择维度" @change="handleDimensionChange">
             <el-option label="综合成绩" value="comprehensive" />
             <el-option label="德育成绩" value="moral" />
             <el-option label="智育成绩" value="intellectual" />
@@ -72,7 +72,7 @@
         <el-table-column prop="classRanking" label="班级排名" width="100" />
         <el-table-column prop="majorRanking" label="专业排名" width="100" />
         <el-table-column prop="trend" label="趋势" width="100">
-          <template v-slot:default="scope">
+          <template slot-scope="scope">
             <el-tag :type="getTrendType(scope.row.trend)" size="small">
               {{ getTrendText(scope.row.trend) }}
             </el-tag>
@@ -84,19 +84,34 @@
 </template>
 
 <script>
-import * as echarts from 'echarts';
-import { getStudentScoreTrend, getClassScoreStatistics, getMajorScoreStatistics } from '@/api/evaluation/semesterScore';
+import * as echarts from 'echarts'
+import { ElMessage } from 'element-ui'
+// 示例接口，可根据你的项目路径替换
+import { getStudentScoreTrend, getClassScoreStatistics, getMajorScoreStatistics } from '@/api/evaluation/semesterScore'
 
 export default {
   name: 'ScoreAnalysisChart',
   props: {
-    studentId: { type: String, default: '' },
-    classId: { type: [String, Number], default: null },
-    majorId: { type: [String, Number], default: null },
-    showDataTable: { type: Boolean, default: true }
+    studentId: {
+      type: String,
+      default: ''
+    },
+    classId: {
+      type: [String, Number],
+      default: null
+    },
+    majorId: {
+      type: [String, Number],
+      default: null
+    },
+    showDataTable: {
+      type: Boolean,
+      default: true
+    }
   },
   data() {
     return {
+      chartRef: null,
       chartInstance: null,
       loading: false,
       chartType: 'trend',
@@ -110,229 +125,230 @@ export default {
         ranking: [],
         distribution: []
       }
-    };
+    }
   },
   watch: {
-    // 监听关键props变化，重新加载数据
-    studentId(newVal) { if (newVal) this.loadChartData(); },
-    classId(newVal) { if (newVal) this.loadChartData(); },
-    majorId(newVal) { if (newVal) this.loadChartData(); }
+    studentId: 'loadChartData',
+    classId: 'loadChartData',
+    majorId: 'loadChartData'
   },
   mounted() {
     this.$nextTick(() => {
-      this.initChart();
-      this.loadChartData();
-    });
-    window.addEventListener('resize', this.handleResize);
+      this.initChart()
+      this.loadChartData()
+      window.addEventListener('resize', this.handleResize)
+    })
   },
   beforeDestroy() {
     if (this.chartInstance) {
-      this.chartInstance.dispose();
+      this.chartInstance.dispose()
     }
-    window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('resize', this.handleResize)
   },
   methods: {
     // 初始化图表
     initChart() {
-      if (!this.$refs.chartRef) return;
-      this.chartInstance = echarts.init(this.$refs.chartRef);
+      this.chartInstance = echarts.init(this.$refs.chartRef)
     },
-    // 处理窗口大小变化
+
     handleResize() {
-      if (this.chartInstance) {
-        this.chartInstance.resize();
-      }
+      if (this.chartInstance) this.chartInstance.resize()
     },
-    // 加载数据总入口
-    loadChartData() {
+
+    async loadChartData() {
       switch (this.chartType) {
-        case 'trend': this.loadTrendData(); break;
-        case 'dimension': this.loadDimensionData(); break;
-        case 'ranking': this.loadRankingData(); break;
-        case 'distribution': this.loadDistributionData(); break;
+        case 'trend': this.loadTrendData(); break
+        case 'dimension': this.loadDimensionData(); break
+        case 'ranking': this.loadRankingData(); break
+        case 'distribution': this.loadDistributionData(); break
       }
     },
-    // 加载趋势分析数据
+
     async loadTrendData() {
-      if (!this.studentId) return;
-      this.loading = true;
+      if (!this.studentId) return
       try {
-        const params = { studentId: this.studentId, timeRange: this.timeRange, dimension: this.selectedDimension };
-        const response = await getStudentScoreTrend(params);
-        if (response.code === 200) {
-          this.chartData.trend = response.data || [];
-          this.updateTrendChart();
-          this.updateStatistics();
-          this.updateTableData();
+        this.loading = true
+        const params = {
+          studentId: this.studentId,
+          timeRange: this.timeRange,
+          dimension: this.selectedDimension
         }
-      } catch (error) {
-        this.$message.error('加载趋势数据失败：' + (error.message || ''));
+        const res = await getStudentScoreTrend(params)
+        if (res.code === 200) {
+          this.chartData.trend = res.data || []
+          this.updateTrendChart()
+          this.updateStatistics()
+          this.updateTableData()
+        }
+      } catch (err) {
+        ElMessage.error('加载趋势数据失败：' + err.message)
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
-    // 加载维度对比数据
+
     async loadDimensionData() {
-      this.loading = true;
-      try {
-        // 使用模拟数据
-        this.chartData.dimension = [
-          { name: '德育', value: 85.5, average: 82.3 }, { name: '智育', value: 92.0, average: 88.7 },
-          { name: '体育', value: 78.5, average: 80.1 }, { name: '美育', value: 88.0, average: 85.2 },
-          { name: '劳育', value: 90.5, average: 87.8 }
-        ];
-        this.updateDimensionChart();
-      } catch (error) {
-        this.$message.error('加载维度数据失败：' + (error.message || ''));
-      } finally {
-        this.loading = false;
-      }
+      this.loading = true
+      this.chartData.dimension = [
+        { name: '德育', value: 85.5, average: 82.3 },
+        { name: '智育', value: 92.0, average: 88.7 },
+        { name: '体育', value: 78.5, average: 80.1 },
+        { name: '美育', value: 88.0, average: 85.2 },
+        { name: '劳育', value: 90.5, average: 87.8 }
+      ]
+      this.updateDimensionChart()
+      this.loading = false
     },
-    // 加载排名分布数据
+
     async loadRankingData() {
-      this.loading = true;
       try {
-        let response;
-        if (this.classId) {
-          response = await getClassScoreStatistics({ classId: this.classId, timeRange: this.timeRange });
-        } else if (this.majorId) {
-          response = await getMajorScoreStatistics({ majorId: this.majorId, timeRange: this.timeRange });
+        this.loading = true
+        let res
+        if (this.classId) res = await getClassScoreStatistics({ classId: this.classId, timeRange: this.timeRange })
+        else if (this.majorId) res = await getMajorScoreStatistics({ majorId: this.majorId, timeRange: this.timeRange })
+
+        if (res && res.code === 200) {
+          this.chartData.ranking = res.data.rankingDistribution || []
+          this.updateRankingChart()
         }
-        if (response && response.code === 200) {
-          this.chartData.ranking = response.data.rankingDistribution || [];
-          this.updateRankingChart();
-        }
-      } catch (error) {
-        this.$message.error('加载排名数据失败：' + (error.message || ''));
+      } catch (err) {
+        ElMessage.error('加载排名数据失败：' + err.message)
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
-    // 加载成绩分布数据
+
     async loadDistributionData() {
-      this.loading = true;
-      try {
-        // 模拟数据
-        this.chartData.distribution = [
-          { range: '90-100', count: 12, percentage: 15.0 }, { range: '80-89', count: 28, percentage: 35.0 },
-          { range: '70-79', count: 25, percentage: 31.3 }, { range: '60-69', count: 10, percentage: 12.5 },
-          { range: '0-59', count: 5, percentage: 6.3 }
-        ];
-        this.updateDistributionChart();
-      } catch (error) {
-        this.$message.error('加载分布数据失败：' + (error.message || ''));
-      } finally {
-        this.loading = false;
-      }
+      this.loading = true
+      this.chartData.distribution = [
+        { range: '90-100', count: 12, percentage: 15.0 },
+        { range: '80-89', count: 28, percentage: 35.0 },
+        { range: '70-79', count: 25, percentage: 31.3 },
+        { range: '60-69', count: 10, percentage: 12.5 },
+        { range: '0-59', count: 5, percentage: 6.3 }
+      ]
+      this.updateDistributionChart()
+      this.loading = false
     },
-    // ... (所有 updateChart 方法都保持不变, 这里省略以减少篇幅)
+
+    // 更新图表
     updateTrendChart() {
       if (!this.chartInstance || !this.chartData.trend.length) return
       const data = this.chartData.trend
       const option = {
         title: { text: '成绩趋势分析', left: 'center' },
-        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }},
+        tooltip: { trigger: 'axis' },
         legend: { data: ['个人成绩', '班级平均'], top: 30 },
-        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'category', data: data.map(item => item.period), axisLabel: { rotate: 45 }},
-        yAxis: { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}分' }},
+        xAxis: { type: 'category', data: data.map(i => i.period), axisLabel: { rotate: 45 } },
+        yAxis: { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}分' } },
         series: [
-          { name: '个人成绩', type: 'line', data: data.map(item => item.score), smooth: true, itemStyle: { color: '#409EFF' }, markPoint: { data: [{ type: 'max', name: '最高分' }, { type: 'min', name: '最低分' }]}},
-          { name: '班级平均', type: 'line', data: data.map(item => item.average), smooth: true, lineStyle: { type: 'dashed' }, itemStyle: { color: '#67C23A' }}
+          { name: '个人成绩', type: 'line', smooth: true, data: data.map(i => i.score), color: '#409EFF' },
+          { name: '班级平均', type: 'line', smooth: true, data: data.map(i => i.average), color: '#67C23A', lineStyle: { type: 'dashed' } }
         ]
-      };
-      this.chartInstance.setOption(option);
+      }
+      this.chartInstance.setOption(option)
     },
+
     updateDimensionChart() {
-      if (!this.chartInstance || !this.chartData.dimension.length) return
       const data = this.chartData.dimension
       const option = {
         title: { text: '各维度成绩对比', left: 'center' },
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }},
+        tooltip: { trigger: 'axis' },
         legend: { data: ['个人成绩', '班级平均'], top: 30 },
-        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'category', data: data.map(item => item.name) },
-        yAxis: { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}分' }},
+        xAxis: { type: 'category', data: data.map(i => i.name) },
+        yAxis: { type: 'value', min: 0, max: 100 },
         series: [
-          { name: '个人成绩', type: 'bar', data: data.map(item => item.value), itemStyle: { color: '#409EFF' }},
-          { name: '班级平均', type: 'bar', data: data.map(item => item.average), itemStyle: { color: '#67C23A' }}
+          { name: '个人成绩', type: 'bar', data: data.map(i => i.value), itemStyle: { color: '#409EFF' } },
+          { name: '班级平均', type: 'bar', data: data.map(i => i.average), itemStyle: { color: '#67C23A' } }
         ]
-      };
-      this.chartInstance.setOption(option);
+      }
+      this.chartInstance.setOption(option)
     },
+
     updateRankingChart() {
-      if (!this.chartInstance || !this.chartData.ranking.length) return
       const data = this.chartData.ranking
-      const categories = Object.keys(data)
-      const values = Object.values(data)
       const option = {
         title: { text: '排名分布统计', left: 'center' },
         tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c}人 ({d}%)' },
         legend: { orient: 'vertical', left: 'left', top: 50 },
-        series: [{ name: '排名分布', type: 'pie', radius: ['40%', '70%'], center: ['60%', '60%'], avoidLabelOverlap: false, label: { show: false, position: 'center' }, emphasis: { label: { show: true, fontSize: '18', fontWeight: 'bold' }}, labelLine: { show: false }, data: categories.map((key, index) => ({ name: key, value: values[index] }))}]
-      };
-      this.chartInstance.setOption(option);
+        series: [{
+          name: '排名分布',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['60%', '60%'],
+          data: Object.keys(data).map(k => ({ name: k, value: data[k] }))
+        }]
+      }
+      this.chartInstance.setOption(option)
     },
+
     updateDistributionChart() {
-      if (!this.chartInstance || !this.chartData.distribution.length) return
       const data = this.chartData.distribution
-      const counts = data.map(item => item.count)
-      const percentages = data.map(item => item.percentage)
       const option = {
         title: { text: '成绩分布统计', left: 'center' },
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: (params) => `${params[0].name}<br/>人数: ${counts[params[0].dataIndex]}人<br/>占比: ${percentages[params[0].dataIndex]}%` },
-        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'category', data: data.map(item => item.range), axisLabel: { interval: 0 }},
-        yAxis: [{ type: 'value', name: '人数', position: 'left', axisLabel: { formatter: '{value}人' }}, { type: 'value', name: '占比', position: 'right', axisLabel: { formatter: '{value}%' }}],
+        tooltip: {
+          trigger: 'axis',
+          formatter: p => {
+            const i = p[0].dataIndex
+            return `${data[i].range}<br/>人数: ${data[i].count}人<br/>占比: ${data[i].percentage}%`
+          }
+        },
+        xAxis: { type: 'category', data: data.map(i => i.range) },
+        yAxis: [{ type: 'value', name: '人数' }, { type: 'value', name: '占比' }],
         series: [
-          { name: '人数', type: 'bar', yAxisIndex: 0, data: counts, itemStyle: { color: '#409EFF' }},
-          { name: '占比', type: 'line', yAxisIndex: 1, data: percentages, itemStyle: { color: '#F56C6C' }}
+          { name: '人数', type: 'bar', data: data.map(i => i.count), itemStyle: { color: '#409EFF' } },
+          { name: '占比', type: 'line', yAxisIndex: 1, data: data.map(i => i.percentage), itemStyle: { color: '#F56C6C' } }
         ]
-      };
-      this.chartInstance.setOption(option);
+      }
+      this.chartInstance.setOption(option)
     },
-    // 更新统计信息
+
     updateStatistics() {
-      if (!this.chartData.trend.length) return;
-      const scores = this.chartData.trend.map(item => item.score).filter(s => s != null);
-      if (scores.length === 0) return;
-      const sum = scores.reduce((a, b) => a + b, 0);
+      const scores = this.chartData.trend.map(i => i.score).filter(s => s != null)
+      if (!scores.length) return
+      const avg = scores.reduce((a, b) => a + b) / scores.length
       this.statisticsData = {
-        averageScore: sum / scores.length,
+        averageScore: avg,
         maxScore: Math.max(...scores),
         minScore: Math.min(...scores),
         passRate: (scores.filter(s => s >= 60).length / scores.length) * 100
-      };
+      }
     },
-    // 更新表格数据
+
     updateTableData() {
-      if (!this.chartData.trend.length) return;
-      this.tableData = this.chartData.trend.map((item, index, arr) => {
-        const prevScore = index > 0 ? arr[index - 1].score : null;
-        let trend = 0;
-        if (prevScore != null && item.score != null) {
-          trend = item.score - prevScore;
-        }
-        return { ...item, comprehensiveScore: item.score, trend };
-      });
+      this.tableData = this.chartData.trend.map((i, idx) => {
+        const prev = idx > 0 ? this.chartData.trend[idx - 1].score : null
+        const trend = prev !== null ? i.score - prev : 0
+        return { ...i, trend }
+      })
     },
-    // ... (所有 getTrend 和 handle*Change 方法都保持不变)
-    getTrendType(trend) { return trend > 0 ? 'success' : trend < 0 ? 'danger' : 'info'; },
-    getTrendText(trend) { return trend > 0 ? `↑${trend.toFixed(1)}` : trend < 0 ? `↓${Math.abs(trend).toFixed(1)}` : '→0.0'; },
-    handleChartTypeChange() { this.loadChartData(); },
-    handleTimeRangeChange() { this.loadChartData(); },
-    handleDimensionChange() { if (this.chartType === 'trend') this.loadTrendData(); },
-    refreshChart() { this.loadChartData(); },
+
+    getTrendType(trend) {
+      if (trend > 0) return 'success'
+      if (trend < 0) return 'danger'
+      return 'info'
+    },
+    getTrendText(trend) {
+      if (trend > 0) return `↑${trend.toFixed(1)}`
+      if (trend < 0) return `↓${Math.abs(trend).toFixed(1)}`
+      return '→0.0'
+    },
+
+    handleChartTypeChange() { this.loadChartData() },
+    handleTimeRangeChange() { this.loadChartData() },
+    handleDimensionChange() { if (this.chartType === 'trend') this.loadTrendData() },
+    refreshChart() { this.loadChartData() },
+
     exportChart() {
-      if (!this.chartInstance) return;
-      const url = this.chartInstance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `成绩分析图表_${new Date().getTime()}.png`;
-      link.click();
+      if (!this.chartInstance) return
+      const url = this.chartInstance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' })
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `成绩分析图表_${Date.now()}.png`
+      link.click()
     }
   }
-};
+}
 </script>
 
 <style scoped>
@@ -341,7 +357,7 @@ export default {
   background: #fff;
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 .chart-controls {
   margin-bottom: 20px;
@@ -349,8 +365,13 @@ export default {
   background: #f5f7fa;
   border-radius: 6px;
 }
-.chart-container { margin-bottom: 20px; }
-.chart { width: 100%; height: 400px; }
+.chart-container {
+  margin-bottom: 20px;
+}
+.chart {
+  width: 100%;
+  height: 400px;
+}
 .statistics-panel {
   margin-bottom: 20px;
   padding: 15px;
@@ -358,6 +379,7 @@ export default {
   border-radius: 6px;
   border-left: 4px solid #409EFF;
 }
-.data-table { margin-top: 20px; }
-.el-statistic { text-align: center; } /* 辅助样式 */
+.data-table {
+  margin-top: 20px;
+}
 </style>

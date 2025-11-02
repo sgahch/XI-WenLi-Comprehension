@@ -98,13 +98,13 @@ DELETE FROM sys_menu WHERE menu_id BETWEEN 2100 AND 2199;
 
 -- 综测管理主菜单
 INSERT INTO `sys_menu` (`menu_id`,`menu_name`,`parent_id`,`order_num`,`path`,`component`,`query`,`route_name`,`is_frame`,`is_cache`,`menu_type`,`visible`,`status`,`perms`,`icon`,`create_by`,`create_time`,`update_by`,`remark`) 
-VALUES (2100,'综测管理',0,6,'evaluation',NULL,NULL,'Evaluation',1,0,'M','0','0',NULL,'education','admin',NOW(),'','综合测评管理');
+VALUES (2100,'综测填报',0,6,'evaluation-submit',NULL,NULL,'Evaluation',1,0,'M','0','0',NULL,'education','admin',NOW(),'','综合测评管理');
 
 -- 学生端菜单
 INSERT INTO `sys_menu` (`menu_id`,`menu_name`,`parent_id`,`order_num`,`path`,`component`,`query`,`route_name`,`is_frame`,`is_cache`,`menu_type`,`visible`,`status`,`perms`,`icon`,`create_by`,`create_time`,`update_by`,`remark`) 
-VALUES (2101,'我的填报',2100,1,'submission','evaluation/submission/index',NULL,'Submission',1,0,'C','0','0','evaluation:submission:list','edit','admin',NOW(),'','综测填报');
+VALUES (2101,'我的填报',2100,1,'submission','evaluation-submit/submission/index',NULL,'Submission',1,0,'C','0','0','evaluation:submission:list','edit','admin',NOW(),'','综测填报');
 INSERT INTO `sys_menu` (`menu_id`,`menu_name`,`parent_id`,`order_num`,`path`,`component`,`query`,`route_name`,`is_frame`,`is_cache`,`menu_type`,`visible`,`status`,`perms`,`icon`,`create_by`,`create_time`,`update_by`,`remark`) 
-VALUES (2102,'填报历史',2100,2,'history','evaluation/submission/history',NULL,'History',1,0,'C','0','0','evaluation:submission:history','time-range','admin',NOW(),'','填报历史');
+VALUES (2102,'填报历史',2100,2,'history','evaluation-submit/submission/history',NULL,'History',1,0,'C','0','0','evaluation:submission:history','time-range','admin',NOW(),'','填报历史');
 
 -- 学生端按钮权限
 INSERT INTO `sys_menu` (`menu_id`,`menu_name`,`parent_id`,`order_num`,`perms`,`icon`,`create_by`,`create_time`,`menu_type`) 
@@ -119,9 +119,9 @@ VALUES
 
 -- 管理员端菜单（审核功能）
 INSERT INTO `sys_menu` (`menu_id`,`menu_name`,`parent_id`,`order_num`,`path`,`component`,`query`,`route_name`,`is_frame`,`is_cache`,`menu_type`,`visible`,`status`,`perms`,`icon`,`create_by`,`create_time`,`update_by`,`remark`) 
-VALUES (2120,'填报审核',2100,3,'audit','evaluation/audit/index',NULL,'Audit',1,0,'C','0','0','evaluation:audit:list','check','admin',NOW(),'','填报审核');
+VALUES (2120,'填报审核',2100,3,'audit','evaluation-submit/audit/index',NULL,'Audit',1,0,'C','0','0','evaluation:audit:list','check','admin',NOW(),'','填报审核');
 INSERT INTO `sys_menu` (`menu_id`,`menu_name`,`parent_id`,`order_num`,`path`,`component`,`query`,`route_name`,`is_frame`,`is_cache`,`menu_type`,`visible`,`status`,`perms`,`icon`,`create_by`,`create_time`,`update_by`,`remark`) 
-VALUES (2121,'成绩统计',2100,4,'statistics','evaluation/statistics/index',NULL,'Statistics',1,0,'C','0','0','evaluation:statistics:list','chart','admin',NOW(),'','成绩统计');
+VALUES (2121,'成绩统计',2100,4,'statistics','evaluation-submit/statistics/index',NULL,'Statistics',1,0,'C','0','0','evaluation:statistics:list','chart','admin',NOW(),'','成绩统计');
 
 -- 管理员端按钮权限
 INSERT INTO `sys_menu` (`menu_id`,`menu_name`,`parent_id`,`order_num`,`perms`,`icon`,`create_by`,`create_time`,`menu_type`) 

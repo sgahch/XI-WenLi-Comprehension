@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.EvaluationAuditLogMapper">
+    
+    <resultMap type="EvaluationAuditLog" id="EvaluationAuditLogResult">
+        <result property="id"    column="id"    />
+        <result property="submissionId"    column="submission_id"    />
+        <result property="detailId"    column="detail_id"    />
+        <result property="auditorId"    column="auditor_id"    />
+        <result property="operation"    column="operation"    />
+        <result property="oldStatus"    column="old_status"    />
+        <result property="newStatus"    column="new_status"    />
+        <result property="remark"    column="remark"    />
+        <result property="auditTime"    column="audit_time"    />
+        <result property="ipAddress"    column="ip_address"    />
+    </resultMap>
+
+    <sql id="selectEvaluationAuditLogVo">
+        select id, submission_id, detail_id, auditor_id, operation, old_status, new_status, remark, audit_time, ip_address from evaluation_audit_log
+    </sql>
+
+    <select id="selectEvaluationAuditLogList" parameterType="EvaluationAuditLog" resultMap="EvaluationAuditLogResult">
+        <include refid="selectEvaluationAuditLogVo"/>
+        <where>  
+            <if test="submissionId != null "> and submission_id = #{submissionId}</if>
+            <if test="detailId != null "> and detail_id = #{detailId}</if>
+            <if test="auditorId != null "> and auditor_id = #{auditorId}</if>
+            <if test="operation != null  and operation != ''"> and operation = #{operation}</if>
+            <if test="oldStatus != null "> and old_status = #{oldStatus}</if>
+            <if test="newStatus != null "> and new_status = #{newStatus}</if>
+            <if test="auditTime != null "> and audit_time = #{auditTime}</if>
+        </where>
+        order by audit_time desc
+    </select>
+    
+    <select id="selectEvaluationAuditLogById" parameterType="Long" resultMap="EvaluationAuditLogResult">
+        <include refid="selectEvaluationAuditLogVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectEvaluationAuditLogBySubmissionId" parameterType="Long" resultMap="EvaluationAuditLogResult">
+        <include refid="selectEvaluationAuditLogVo"/>
+        where submission_id = #{submissionId}
+        order by audit_time desc
+    </select>
+
+    <select id="selectEvaluationAuditLogByDetailId" parameterType="Long" resultMap="EvaluationAuditLogResult">
+        <include refid="selectEvaluationAuditLogVo"/>
+        where detail_id = #{detailId}
+        order by audit_time desc
+    </select>
+        
+    <insert id="insertEvaluationAuditLog" parameterType="EvaluationAuditLog" useGeneratedKeys="true" keyProperty="id">
+        insert into evaluation_audit_log
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="submissionId != null">submission_id,</if>
+            <if test="detailId != null">detail_id,</if>
+            <if test="auditorId != null">auditor_id,</if>
+            <if test="operation != null">operation,</if>
+            <if test="oldStatus != null">old_status,</if>
+            <if test="newStatus != null">new_status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="auditTime != null">audit_time,</if>
+            <if test="ipAddress != null">ip_address,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="submissionId != null">#{submissionId},</if>
+            <if test="detailId != null">#{detailId},</if>
+            <if test="auditorId != null">#{auditorId},</if>
+            <if test="operation != null">#{operation},</if>
+            <if test="oldStatus != null">#{oldStatus},</if>
+            <if test="newStatus != null">#{newStatus},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="auditTime != null">#{auditTime},</if>
+            <if test="ipAddress != null">#{ipAddress},</if>
+         </trim>
+    </insert>
+
+    <update id="updateEvaluationAuditLog" parameterType="EvaluationAuditLog">
+        update evaluation_audit_log
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="submissionId != null">submission_id = #{submissionId},</if>
+            <if test="detailId != null">detail_id = #{detailId},</if>
+            <if test="auditorId != null">auditor_id = #{auditorId},</if>
+            <if test="operation != null">operation = #{operation},</if>
+            <if test="oldStatus != null">old_status = #{oldStatus},</if>
+            <if test="newStatus != null">new_status = #{newStatus},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="auditTime != null">audit_time = #{auditTime},</if>
+            <if test="ipAddress != null">ip_address = #{ipAddress},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteEvaluationAuditLogById" parameterType="Long">
+        delete from evaluation_audit_log where id = #{id}
+    </delete>
+
+    <delete id="deleteEvaluationAuditLogByIds" parameterType="String">
+        delete from evaluation_audit_log where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

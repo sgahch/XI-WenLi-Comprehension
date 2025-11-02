@@ -599,7 +599,7 @@ export default {
     async handleSubmit() {
       try {
         await this.validateForm()
-        // 自定义加分项校验：加分项必须上传证明材料
+        // .自定义加分项校验：加分项必须上传证明材料
         const dimensions = ['moral','intellectual','physical','aesthetic','labor']
         const missingProof = dimensions.some(dim => {
           const items = this.formData[dim + 'Details'] || []

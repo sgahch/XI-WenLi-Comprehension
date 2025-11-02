@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.EvaluationSubmissionMapper">
+    
+    <resultMap type="EvaluationSubmission" id="EvaluationSubmissionResult">
+        <result property="id"    column="id"    />
+        <result property="userId"    column="student_id"    />
+        <result property="academicYear"    column="academic_year"    />
+        <result property="semester"    column="semester"    />
+        <result property="classId"    column="class_id"    />
+        <result property="status"    column="status"    />
+        <result property="moralScore"    column="moral_score"    />
+        <result property="intellectualScore"    column="intellectual_score"    />
+        <result property="physicalScore"    column="physical_score"    />
+        <result property="aestheticScore"    column="aesthetic_score"    />
+        <result property="laborScore"    column="labor_score"    />
+        <result property="totalScore"    column="total_score"    />
+
+        <result property="submitTime"    column="submit_time"    />
+        <result property="auditTime"    column="audit_time"    />
+        <result property="auditBy"    column="audit_by"    />
+        <result property="auditComment"    column="audit_comment"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectEvaluationSubmissionVo">
+        select id, student_id, academic_year, semester, class_id, status, moral_score, intellectual_score, physical_score, aesthetic_score, labor_score, total_score, submit_time, audit_time, audit_by, audit_comment, create_by, create_time, update_by, update_time, remark from evaluation_submission
+    </sql>
+
+    <select id="selectEvaluationSubmissionList" parameterType="EvaluationSubmission" resultMap="EvaluationSubmissionResult">
+        <include refid="selectEvaluationSubmissionVo"/>
+        <where>  
+            <if test="userId != null "> and student_id = #{userId}</if>
+            <if test="academicYear != null  and academicYear != ''"> and academic_year = #{academicYear}</if>
+            <if test="semester != null  and semester != ''"> and semester = #{semester}</if>
+            <if test="classId != null "> and class_id = #{classId}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+            <if test="moralScore != null "> and moral_score = #{moralScore}</if>
+            <if test="intellectualScore != null "> and intellectual_score = #{intellectualScore}</if>
+            <if test="physicalScore != null "> and physical_score = #{physicalScore}</if>
+            <if test="aestheticScore != null "> and aesthetic_score = #{aestheticScore}</if>
+            <if test="laborScore != null "> and labor_score = #{laborScore}</if>
+            <if test="totalScore != null "> and total_score = #{totalScore}</if>
+            <if test="submitTime != null "> and submit_time = #{submitTime}</if>
+            <if test="auditTime != null "> and audit_time = #{auditTime}</if>
+            <if test="auditBy != null "> and audit_by = #{auditBy}</if>
+            <if test="auditComment != null  and auditComment != ''"> and audit_comment = #{auditComment}</if>
+        </where>
+        order by create_time desc
+    </select>
+    
+    <select id="selectEvaluationSubmissionById" parameterType="Long" resultMap="EvaluationSubmissionResult">
+        <include refid="selectEvaluationSubmissionVo"/>
+        where id = #{id}
+    </select>
+
+    <!-- 提交时插入或更新记录（避免唯一索引冲突） -->
+    <insert id="insertEvaluationSubmission" parameterType="EvaluationSubmission" useGeneratedKeys="true" keyProperty="id">
+        insert into evaluation_submission (
+            student_id,
+            academic_year,
+            semester,
+            class_id,
+            status,
+            moral_score,
+            intellectual_score,
+            physical_score,
+            aesthetic_score,
+            labor_score,
+            total_score,
+            submit_time,
+            audit_time,
+            audit_by,
+            audit_comment,
+            create_by,
+            create_time,
+            update_by,
+            update_time,
+            remark
+        ) values (
+                     #{studentId},
+                     #{academicYear},
+                     #{semester},
+                     #{classId},
+                     #{status},
+                     #{moralScore},
+                     #{intellectualScore},
+                     #{physicalScore},
+                     #{aestheticScore},
+                     #{laborScore},
+                     #{totalScore},
+                     #{submitTime},
+                     #{auditTime},
+                     #{auditBy},
+                     #{auditComment},
+                     #{createBy},
+                     #{createTime},
+                     #{updateBy},
+                     #{updateTime},
+                     #{remark}
+                 )
+        on duplicate key update
+                             class_id = values(class_id),
+                             status = values(status),
+                             moral_score = values(moral_score),
+                             intellectual_score = values(intellectual_score),
+                             physical_score = values(physical_score),
+                             aesthetic_score = values(aesthetic_score),
+                             labor_score = values(labor_score),
+                             total_score = values(total_score),
+                             submit_time = values(submit_time),
+                             audit_time = values(audit_time),
+                             audit_by = values(audit_by),
+                             audit_comment = values(audit_comment),
+                             update_by = values(update_by),
+                             update_time = values(update_time),
+                             remark = values(remark)
+    </insert>
+
+
+    <update id="updateEvaluationSubmission" parameterType="EvaluationSubmission">
+        update evaluation_submission
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="userId != null">student_id = #{userId},</if>
+            <if test="academicYear != null and academicYear != ''">academic_year = #{academicYear},</if>
+            <if test="semester != null and semester != ''">semester = #{semester},</if>
+            <if test="classId != null">class_id = #{classId},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="moralScore != null">moral_score = #{moralScore},</if>
+            <if test="intellectualScore != null">intellectual_score = #{intellectualScore},</if>
+            <if test="physicalScore != null">physical_score = #{physicalScore},</if>
+            <if test="aestheticScore != null">aesthetic_score = #{aestheticScore},</if>
+            <if test="laborScore != null">labor_score = #{laborScore},</if>
+            <if test="totalScore != null">total_score = #{totalScore},</if>
+
+            <if test="submitTime != null">submit_time = #{submitTime},</if>
+            <if test="auditTime != null">audit_time = #{auditTime},</if>
+            <if test="auditBy != null">audit_by = #{auditBy},</if>
+            <if test="auditComment != null">audit_comment = #{auditComment},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteEvaluationSubmissionById" parameterType="Long">
+        delete from evaluation_submission where id = #{id}
+    </delete>
+
+    <delete id="deleteEvaluationSubmissionByIds" parameterType="String">
+        delete from evaluation_submission where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="countSubmissions" parameterType="EvaluationSubmission" resultType="int">
+        select count(*) from evaluation_submission
+        <where>  
+            <if test="userId != null "> and student_id = #{userId}</if>
+            <if test="academicYear != null  and academicYear != ''"> and academic_year = #{academicYear}</if>
+            <if test="semester != null  and semester != ''"> and semester = #{semester}</if>
+            <if test="classId != null "> and class_id = #{classId}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+    </select>
+
+    <select id="countByStatus" parameterType="EvaluationSubmission" resultType="map">
+        select 
+            status,
+            count(*) as count
+        from evaluation_submission
+        <where>  
+            <if test="userId != null "> and student_id = #{userId}</if>
+            <if test="academicYear != null  and academicYear != ''"> and academic_year = #{academicYear}</if>
+            <if test="semester != null  and semester != ''"> and semester = #{semester}</if>
+            <if test="classId != null "> and class_id = #{classId}</if>
+        </where>
+        group by status
+    </select>
+
+    <select id="getAverageScores" parameterType="EvaluationSubmission" resultType="map">
+        select 
+            avg(moral_score) as avgMoralScore,
+            avg(intellectual_score) as avgIntellectualScore,
+            avg(physical_score) as avgPhysicalScore,
+            avg(aesthetic_score) as avgAestheticScore,
+            avg(labor_score) as avgLaborScore,
+            avg(total_score) as avgTotalScore
+        from evaluation_submission
+        <where>  
+            <if test="userId != null "> and student_id = #{userId}</if>
+            <if test="academicYear != null  and academicYear != ''"> and academic_year = #{academicYear}</if>
+            <if test="semester != null  and semester != ''"> and semester = #{semester}</if>
+            <if test="classId != null "> and class_id = #{classId}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+    </select>
+
+</mapper>
