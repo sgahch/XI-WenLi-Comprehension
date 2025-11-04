@@ -1,8 +1,8 @@
 <template>
   <div class="ai-chat-container" v-if="shouldShowAiChat">
     <!-- 聊天窗口触发按钮 -->
-    <div 
-      v-if="!isExpanded" 
+    <div
+      v-if="!isExpanded"
       class="chat-trigger-btn"
       :style="{ right: position.x + 'px', bottom: position.y + 'px' }"
       @click="toggleChat"
@@ -15,13 +15,13 @@
     </div>
 
     <!-- 聊天窗口主体 -->
-    <div 
-      v-if="isExpanded" 
+    <div
+      v-if="isExpanded"
       class="chat-window"
-      :style="{ 
-        right: position.x + 'px', 
+      :style="{
+        right: position.x + 'px',
         bottom: position.y + 'px',
-        width: width + 'px', 
+        width: width + 'px',
         height: height + 'px'
       }"
     >
@@ -36,17 +36,17 @@
           <div class="status-indicator online"></div>
         </div>
         <div class="header-actions">
-          <el-button 
-            type="text" 
-            icon="el-icon-minus" 
-            size="mini" 
+          <el-button
+            type="text"
+            icon="el-icon-minus"
+            size="mini"
             @click="toggleChat"
             class="action-btn"
           />
-          <el-button 
-            type="text" 
-            icon="el-icon-close" 
-            size="mini" 
+          <el-button
+            type="text"
+            icon="el-icon-close"
+            size="mini"
             @click="closeChat"
             class="action-btn"
           />
@@ -68,10 +68,10 @@
             </el-button>
           </div>
         </div>
-        
-        <div 
-          v-for="(message, index) in messages" 
-          :key="index" 
+
+        <div
+          v-for="(message, index) in messages"
+          :key="index"
           :class="['message-item', message.type]"
         >
           <div class="message-avatar">
@@ -120,10 +120,10 @@
             class="message-input"
           />
           <div class="input-actions">
-            <el-button 
-              type="primary" 
+            <el-button
+              type="primary"
               circle
-              size="mini" 
+              size="mini"
               icon="el-icon-s-promotion"
               :loading="isLoading"
               :disabled="!inputMessage.trim()"
@@ -154,7 +154,7 @@ export default {
       position: { x: 20, y: 20 },
       isDragging: false,
       dragStart: { mouseX: 0, mouseY: 0, initialX: 0, initialY: 0 },
-      
+
       // ✨ [新增] 调整大小所需的状态
       isResizing: false,
       resizeStart: { mouseX: 0, mouseY: 0, initialW: 0, initialH: 0 },
@@ -178,7 +178,7 @@ export default {
       const isLoginPage = this.$route.path === '/login'
       // 检查用户是否已登录
       const isLoggedIn = this.$store.getters.token
-      
+
       // 只有在非登录页面且用户已登录时才显示AI助手
       return !isLoginPage && isLoggedIn
     }
@@ -200,7 +200,7 @@ export default {
         // 先清空当前聊天记录
         this.messages = []
         this.unreadCount = 0
-        
+
         if (newToken) {
           // 如果有新token（用户登录），重置位置并加载新用户的聊天历史
           this.resetPositionToBottomRight()
@@ -254,7 +254,7 @@ export default {
       }
       event.preventDefault()
     },
-    
+
     // ✨ [新增] 开始调整大小的方法
     startResize(event) {
       this.isResizing = true
@@ -290,10 +290,10 @@ export default {
       if (this.isResizing) {
         const deltaX = event.clientX - this.resizeStart.mouseX
         const deltaY = event.clientY - this.resizeStart.mouseY
-        
+
         const newWidth = this.resizeStart.initialW - deltaX
         const newHeight = this.resizeStart.initialH - deltaY
-        
+
         this.width = Math.max(this.minWidth, newWidth)
         this.height = Math.max(this.minHeight, newHeight)
       }
@@ -353,12 +353,12 @@ export default {
     addMessage(type, text) {
       // 确保text是字符串类型
       const messageText = typeof text === 'string' ? text : String(text || '')
-      const message = { 
-        type, 
-        text: messageText, 
-        timestamp: new Date(), 
-        isTyping: false, 
-        displayText: '' 
+      const message = {
+        type,
+        text: messageText,
+        timestamp: new Date(),
+        isTyping: false,
+        displayText: ''
       }
       this.messages.push(message)
       this.$nextTick(this.scrollToBottom)
@@ -368,12 +368,12 @@ export default {
     addAiMessageWithTyping(text) {
       // 确保text是字符串类型
       const messageText = typeof text === 'string' ? text : String(text || '')
-      const message = { 
-        type: 'ai', 
-        text: messageText, 
-        timestamp: new Date(), 
-        isTyping: true, 
-        displayText: '' 
+      const message = {
+        type: 'ai',
+        text: messageText,
+        timestamp: new Date(),
+        isTyping: true,
+        displayText: ''
       }
       this.messages.push(message)
       this.$nextTick(this.scrollToBottom)
@@ -414,12 +414,12 @@ export default {
         console.warn('formatMessage收到非字符串类型的数据:', typeof text, text)
         return text || '' // 如果不是字符串，返回空字符串或原值的字符串形式
       }
-      
+
       // 空字符串检查
       if (!text || text.trim() === '') {
         return ''
       }
-      
+
       try {
         return md.render(text)
       } catch (error) {
@@ -455,7 +455,7 @@ export default {
       // 只保存位置和窗口大小到localStorage，聊天记录由后端自动保存
       localStorage.setItem('ai-chat-position', JSON.stringify(this.position))
       localStorage.setItem('ai-chat-size', JSON.stringify({ width: this.width, height: this.height }))
-      
+
       // 注意：聊天记录现在由后端在每次对话时自动保存到Redis，无需前端手动保存
     },
     loadChatHistory() {
@@ -463,7 +463,7 @@ export default {
       if (!this.$store.getters.token) {
         return
       }
-      
+
       try {
         // 从后端Redis加载聊天历史记录
         request({
@@ -479,11 +479,11 @@ export default {
               isTyping: false,
               displayText: msg.text || msg.content || ''
             }))
-            console.log('从后端加载聊天记录成功，消息数量:', this.messages.length)
+
           } else {
             this.messages = []
           }
-          
+
           // 加载位置信息（仍从localStorage获取）
           const position = localStorage.getItem('ai-chat-position')
           if (position) this.position = JSON.parse(position)
@@ -546,7 +546,7 @@ export default {
     margin-right: 8px;
     transition: transform 0.3s;
   }
-  
+
   &:hover .chat-icon {
     transform: rotate(-15deg);
   }
@@ -631,42 +631,42 @@ export default {
   align-items: center;
   cursor: move;
   user-select: none;
-  
+
   .header-left {
     display: flex;
     align-items: center;
-    
+
     .header-icon {
       font-size: 18px;
       margin-right: 8px;
     }
-    
+
     .header-title {
       font-size: 14px;
       font-weight: 600;
       margin-right: 8px;
     }
-    
+
     .status-indicator {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      
+
       &.online {
         background: #2ed573;
         box-shadow: 0 0 0 2px rgba(46, 213, 115, 0.3);
       }
     }
   }
-  
+
   .header-actions {
     display: flex;
     gap: 4px;
-    
+
     .action-btn {
       color: white;
       padding: 4px;
-      
+
       &:hover {
         background: rgba(255, 255, 255, 0.1);
         border-radius: 4px;
@@ -680,15 +680,15 @@ export default {
   overflow-y: auto;
   padding: 16px;
   background: #f8f9fa;
-  
+
   &::-webkit-scrollbar {
     width: 4px;
   }
-  
+
   &::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: #ddd;
     border-radius: 2px;
@@ -699,24 +699,24 @@ export default {
   text-align: center;
   padding: 40px 20px;
   color: #666;
-  
+
   .welcome-icon {
     font-size: 48px;
     margin-bottom: 16px;
   }
-  
+
   h3 {
     margin: 0 0 8px 0;
     color: #333;
     font-size: 18px;
   }
-  
+
   p {
     margin: 0 0 20px 0;
     font-size: 14px;
     line-height: 1.5;
   }
-  
+
   .quick-actions {
     display: flex;
     gap: 8px;
@@ -737,22 +737,22 @@ export default {
 
   &.user {
     flex-direction: row-reverse;
-    
+
     .message-content {
       align-items: flex-end;
-      
+
       .message-bubble {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
       }
     }
-    
+
     .message-avatar {
       background-color: #e3e7fc;
       color: #667eea;
     }
   }
-  
+
   &.ai {
     .message-bubble {
       background: white;
@@ -850,14 +850,14 @@ export default {
 .loading-dots {
   display: flex;
   gap: 4px;
-  
+
   span {
     width: 6px;
     height: 6px;
     border-radius: 50%;
     background: #999;
     animation: bounce 1.4s infinite ease-in-out both;
-    
+
     &:nth-child(1) { animation-delay: -0.32s; }
     &:nth-child(2) { animation-delay: -0.16s; }
   }
@@ -886,7 +886,7 @@ export default {
 
 .message-input {
   flex: 1;
-  
+
   ::v-deep .el-textarea__inner {
     border: none;
     background-color: #f1f3f5;
@@ -895,11 +895,11 @@ export default {
     font-size: 14px;
     line-height: 1.5;
     color: #343a40;
-    
+
     &::placeholder {
       color: #adb5bd;
     }
-    
+
     &:focus {
       border: none;
       background-color: #e9ecef;
@@ -913,7 +913,7 @@ export default {
   height: 36px;
   font-size: 16px;
   transition: all 0.2s;
-  
+
   &:hover:not(.is-disabled) {
     transform: scale(1.1);
   }
@@ -935,12 +935,12 @@ export default {
     right: 10px !important;
     bottom: 10px !important;
   }
-  
+
   .chat-trigger-btn {
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    
+
     .chat-text {
       display: none;
     }

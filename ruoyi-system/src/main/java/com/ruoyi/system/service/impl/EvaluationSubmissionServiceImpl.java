@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,12 +13,16 @@ import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.ip.IpUtils;
 import com.ruoyi.common.utils.ServletUtils;
+import com.ruoyi.common.constant.SubmissionStatusConstants;
+import com.ruoyi.common.constant.AuditOperationConstants;
+import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.system.mapper.EvaluationSubmissionMapper;
 import com.ruoyi.system.domain.EvaluationSubmission;
 import com.ruoyi.system.domain.dto.AuditRequest;
 import com.ruoyi.system.domain.dto.BatchAuditRequest;
 import com.ruoyi.system.service.IEvaluationSubmissionService;
 import com.ruoyi.system.service.IEvaluationAuditLogService;
+import com.ruoyi.system.service.SubmissionStateMachine;
 
 /**
  * 综测填报Service业务层处理
@@ -35,6 +40,9 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
     private IEvaluationAuditLogService evaluationAuditLogService;
 
     @Autowired
+    private SubmissionStateMachine submissionStateMachine;
+
+    @Autowired
     private com.ruoyi.system.mapper.TEvaluationItemConfigMapper tEvaluationItemConfigMapper;
 
     @Autowired
@@ -45,14 +53,31 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
 
     /**
      * 查询综测填报
-     * 
+     *
      * @param id 综测填报主键
      * @return 综测填报
      */
     @Override
     public EvaluationSubmission selectEvaluationSubmissionById(Long id)
     {
-        return evaluationSubmissionMapper.selectEvaluationSubmissionById(id);
+        EvaluationSubmission submission = evaluationSubmissionMapper.selectEvaluationSubmissionById(id);
+        if (submission != null) {
+            // 加载详情列表
+            java.util.List<com.ruoyi.system.domain.EvaluationSubmissionDetail> details =
+                evaluationSubmissionDetailMapper.selectBySubmissionId(id);
+
+            // 为每个详情加载附件
+            if (details != null && !details.isEmpty()) {
+                for (com.ruoyi.system.domain.EvaluationSubmissionDetail detail : details) {
+                    java.util.List<com.ruoyi.system.domain.EvaluationAttachment> attachments =
+                        evaluationAttachmentMapper.selectByDetailId(detail.getId());
+                    detail.setAttachments(attachments);
+                }
+            }
+
+            submission.setDetails(details);
+        }
+        return submission;
     }
 
     /**
@@ -164,7 +189,7 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
             int r = evaluationSubmissionMapper.updateEvaluationSubmission(evaluationSubmission);
             // 同步详情与附件
             Long submissionId = existingRecord.getId();
-            syncDetailsAndAttachments(submissionId, evaluationSubmission.getDetails());
+            syncDetailsAndAttachments(submissionId, evaluationSubmission.getDetails(), evaluationSubmission.getGradeScreenshotUrls());
             return r;
         } else {
             // 不存在记录，执行插入操作
@@ -175,7 +200,7 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
             List<EvaluationSubmission> afterInsert = evaluationSubmissionMapper.selectEvaluationSubmissionList(queryCondition);
             if (afterInsert != null && !afterInsert.isEmpty()) {
                 Long submissionId = afterInsert.get(0).getId();
-                syncDetailsAndAttachments(submissionId, evaluationSubmission.getDetails());
+                syncDetailsAndAttachments(submissionId, evaluationSubmission.getDetails(), evaluationSubmission.getGradeScreenshotUrls());
             }
             return r;
         }
@@ -266,8 +291,11 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
 
     /**
      * 同步入库详情与附件
+     * @param submissionId 填报ID
+     * @param details 详情列表
+     * @param gradeScreenshotUrls 成绩截图URL列表
      */
-    private void syncDetailsAndAttachments(Long submissionId, java.util.List<com.ruoyi.system.domain.EvaluationSubmissionDetail> details) {
+    private void syncDetailsAndAttachments(Long submissionId, java.util.List<com.ruoyi.system.domain.EvaluationSubmissionDetail> details, java.util.List<String> gradeScreenshotUrls) {
         if (submissionId == null) {
             return;
         }
@@ -275,6 +303,10 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
         evaluationSubmissionDetailMapper.deleteBySubmissionId(submissionId);
 
         if (details == null || details.isEmpty()) {
+            // 即使没有详情，也要处理成绩截图
+            if (gradeScreenshotUrls != null && !gradeScreenshotUrls.isEmpty()) {
+                saveGradeScreenshots(submissionId, gradeScreenshotUrls);
+            }
             return;
         }
         for (com.ruoyi.system.domain.EvaluationSubmissionDetail d : details) {
@@ -337,7 +369,7 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
                     att.setUploadBy(SecurityUtils.getUserId());
                     att.setCreateTime(DateUtils.getNowDate());
                     att.setUpdateTime(DateUtils.getNowDate());
-                    
+
                     // 确保必填字段不为空，优先使用前端传递的值
                     if (att.getOriginalName() == null || att.getOriginalName().trim().isEmpty()) {
                         // 如果前端没有传递原始文件名，尝试从fileName中提取
@@ -378,7 +410,7 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
                         // 注意：在实际应用中，应该从文件流或文件对象中获取真实大小
                         att.setFileSize(0L);
                     }
-                    
+
                     // 确保 url 字段不为空
                     if (att.getUrl() == null || att.getUrl().trim().isEmpty()) {
                         // 如果前端没有传递 URL，尝试从 filePath 构建
@@ -391,16 +423,132 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
                             att.setUrl("/profile/uploads/default/file_" + System.currentTimeMillis() + ".txt");
                         }
                     }
-                    
+
+                    // 确保 attachment_type 字段不为空（默认为证书材料）
+                    if (att.getAttachmentType() == null || att.getAttachmentType().trim().isEmpty()) {
+                        att.setAttachmentType(com.ruoyi.common.constant.AttachmentTypeConstants.CERTIFICATE);
+                    }
+
                     evaluationAttachmentMapper.insertEvaluationAttachment(att);
                 }
             }
         }
+
+        // 处理成绩截图URL列表
+        if (gradeScreenshotUrls != null && !gradeScreenshotUrls.isEmpty()) {
+            saveGradeScreenshots(submissionId, gradeScreenshotUrls);
+        }
+    }
+
+    /**
+     * 保存成绩截图
+     * @param submissionId 填报ID
+     * @param gradeScreenshotUrls 成绩截图URL列表
+     */
+    private void saveGradeScreenshots(Long submissionId, java.util.List<String> gradeScreenshotUrls) {
+        if (submissionId == null || gradeScreenshotUrls == null || gradeScreenshotUrls.isEmpty()) {
+            return;
+        }
+
+        // 查找智育维度的detailId
+        Long intellectualDetailId = findIntellectualDetailId(submissionId);
+
+        if (intellectualDetailId == null) {
+            // 如果没有智育维度的成果，不保存成绩截图
+            System.out.println("警告：该填报记录中没有智育维度的成果，无法保存成绩截图");
+            return;
+        }
+
+        // 为每个URL创建附件记录
+        for (String url : gradeScreenshotUrls) {
+            if (url == null || url.trim().isEmpty()) {
+                continue;
+            }
+
+            com.ruoyi.system.domain.EvaluationAttachment attachment = new com.ruoyi.system.domain.EvaluationAttachment();
+            attachment.setDetailId(intellectualDetailId);
+            attachment.setUrl(url);
+            attachment.setFileName(extractFileNameFromUrl(url));
+            attachment.setOriginalName(extractFileNameFromUrl(url));
+            attachment.setFilePath(url);
+            attachment.setFileSize(0L); // 文件大小未知，设置为0
+            attachment.setFileType(extractFileExtension(url));
+            attachment.setAttachmentType(com.ruoyi.common.constant.AttachmentTypeConstants.GRADE_SCREENSHOT);
+            attachment.setUploadBy(SecurityUtils.getUserId());
+            attachment.setUploadTime(DateUtils.getNowDate());
+            attachment.setCreateTime(DateUtils.getNowDate());
+            attachment.setUpdateTime(DateUtils.getNowDate());
+
+            evaluationAttachmentMapper.insertEvaluationAttachment(attachment);
+        }
+    }
+
+    /**
+     * 查找智育维度的detailId
+     * @param submissionId 填报ID
+     * @return 智育维度的detailId，如果不存在则返回null
+     */
+    private Long findIntellectualDetailId(Long submissionId) {
+        java.util.List<com.ruoyi.system.domain.EvaluationSubmissionDetail> details =
+            evaluationSubmissionDetailMapper.selectBySubmissionId(submissionId);
+
+        for (com.ruoyi.system.domain.EvaluationSubmissionDetail detail : details) {
+            String ruleSnapshotStr = detail.getRuleSnapshot();
+            if (ruleSnapshotStr != null && !ruleSnapshotStr.isEmpty()) {
+                try {
+                    com.alibaba.fastjson2.JSONObject ruleSnapshot = com.alibaba.fastjson2.JSONObject.parseObject(ruleSnapshotStr);
+
+                    // 尝试获取 dimensionType（数字类型）
+                    Integer dimensionType = ruleSnapshot.getInteger("dimensionType");
+                    if (dimensionType != null && dimensionType == 1) {
+                        // dimensionType=1 表示智育维度
+                        return detail.getId();
+                    }
+
+                    // 兼容旧版本：尝试获取 dimension（字符串类型）
+                    String dimension = ruleSnapshot.getString("dimension");
+                    if ("intellectual".equals(dimension)) {
+                        return detail.getId();
+                    }
+                } catch (Exception e) {
+                    System.out.println("解析ruleSnapshot失败: " + e.getMessage());
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 从URL中提取文件名
+     * @param url 文件URL
+     * @return 文件名
+     */
+    private String extractFileNameFromUrl(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return "unknown";
+        }
+        String[] parts = url.split("/");
+        return parts[parts.length - 1];
+    }
+
+    /**
+     * 从URL中提取文件扩展名
+     * @param url 文件URL
+     * @return 文件扩展名
+     */
+    private String extractFileExtension(String url) {
+        String fileName = extractFileNameFromUrl(url);
+        int lastDotIndex = fileName.lastIndexOf('.');
+        if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
+            return fileName.substring(lastDotIndex + 1);
+        }
+        return "jpg"; // 默认为jpg
     }
 
     /**
      * 执行审核操作
-     * 
+     *
      * @param auditRequest 审核请求
      * @return 审核结果
      */
@@ -409,44 +557,42 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
     public Map<String, Object> auditSubmission(AuditRequest auditRequest)
     {
         Map<String, Object> result = new HashMap<>();
-        
+
         try {
             // 获取当前审核人信息
             Long auditorId = SecurityUtils.getUserId();
             String auditorName = SecurityUtils.getUsername();
-            
+            List<Long> auditorRoleIds = SecurityUtils.getLoginUser().getUser().getRoles()
+                    .stream()
+                    .map(role -> role.getRoleId())
+                    .collect(java.util.stream.Collectors.toList());
+
             // 验证审核操作类型
-            if (!"APPROVE".equals(auditRequest.getOperation()) && !"REJECT".equals(auditRequest.getOperation())) {
-                throw new RuntimeException("无效的审核操作类型");
+            if (!AuditOperationConstants.isValidOperation(auditRequest.getOperation())) {
+                throw new RuntimeException("无效的审核操作类型: " + auditRequest.getOperation());
             }
-            
+
             EvaluationSubmission submission = null;
             Integer oldStatus = null;
             Integer newStatus = null;
-            
+
             // 处理整体审核
             if (auditRequest.getSubmissionId() != null) {
                 submission = evaluationSubmissionMapper.selectEvaluationSubmissionById(auditRequest.getSubmissionId());
                 if (submission == null) {
                     throw new RuntimeException("填报记录不存在");
                 }
-                
+
                 oldStatus = submission.getStatus();
-                
-                // 根据操作类型设置新状态
-                if ("APPROVE".equals(auditRequest.getOperation())) {
-                    // 审核通过：根据当前状态决定下一状态
-                    if (oldStatus == 1) { // 待班委审核 -> 待辅导员审核
-                        newStatus = 2;
-                    } else if (oldStatus == 2) { // 待辅导员审核 -> 已通过
-                        newStatus = 3;
-                    } else {
-                        throw new RuntimeException("当前状态不允许审核通过操作");
-                    }
-                } else { // REJECT
-                    newStatus = 4; // 已驳回
+
+                // 验证审核权限
+                if (!submissionStateMachine.canAudit(oldStatus, auditorRoleIds)) {
+                    throw new RuntimeException("您无权审核此记录。当前状态: " + SubmissionStatusConstants.getStatusDesc(oldStatus));
                 }
-                
+
+                // 使用状态机计算新状态
+                newStatus = submissionStateMachine.calculateNextStatus(oldStatus, auditRequest.getOperation(), auditorRoleIds);
+
                 // 更新填报记录状态
                 submission.setStatus(newStatus);
                 submission.setAuditTime(DateUtils.getNowDate());
@@ -454,40 +600,46 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
                 submission.setAuditComment(auditRequest.getRemark());
                 submission.setUpdateTime(DateUtils.getNowDate());
                 submission.setUpdateBy(auditorName);
-                
+
                 evaluationSubmissionMapper.updateEvaluationSubmission(submission);
+
+                // 记录状态流转描述
+                String transitionDesc = submissionStateMachine.getTransitionDescription(oldStatus, newStatus, auditRequest.getOperation());
+                result.put("transitionDescription", transitionDesc);
             }
-            
-            // TODO: 处理详情审核（如果需要）
-            if (auditRequest.getDetailId() != null) {
-                // 这里可以添加详情审核逻辑
-                // 需要根据具体的详情表结构来实现
-            }
-            
+
             // 记录审核日志
             String ipAddress = IpUtils.getIpAddr(ServletUtils.getRequest());
-            evaluationAuditLogService.recordAuditLog(auditRequest.getSubmissionId(), auditRequest.getDetailId(), 
-                          auditRequest.getOperation(), auditRequest.getRemark(), 
+            evaluationAuditLogService.recordAuditLog(auditRequest.getSubmissionId(), auditRequest.getDetailId(),
+                          auditRequest.getOperation(), auditRequest.getRemark(),
                           auditorId, oldStatus, newStatus, ipAddress);
-            
+
             // 构建返回结果
             result.put("submissionId", auditRequest.getSubmissionId());
             result.put("detailId", auditRequest.getDetailId());
             result.put("operation", auditRequest.getOperation());
             result.put("oldStatus", oldStatus);
             result.put("newStatus", newStatus);
+            result.put("oldStatusDesc", SubmissionStatusConstants.getStatusDesc(oldStatus));
+            result.put("newStatusDesc", SubmissionStatusConstants.getStatusDesc(newStatus));
             result.put("auditTime", DateUtils.getNowDate());
             result.put("auditorId", auditorId);
             result.put("auditorName", auditorName);
             result.put("remark", auditRequest.getRemark());
             result.put("success", true);
-            
-        } catch (Exception e) {
+
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            // 业务逻辑异常
             result.put("success", false);
             result.put("message", e.getMessage());
+            throw new RuntimeException(e.getMessage());
+        } catch (Exception e) {
+            // 系统异常
+            result.put("success", false);
+            result.put("message", "审核操作失败：" + e.getMessage());
             throw new RuntimeException("审核操作失败：" + e.getMessage());
         }
-        
+
         return result;
     }
 

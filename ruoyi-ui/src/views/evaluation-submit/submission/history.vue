@@ -11,6 +11,16 @@
             <el-option label="第二学期" :value="2" />
           </el-select>
         </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="queryParams.status" placeholder="选择状态" clearable>
+            <el-option label="全部" :value="undefined" />
+            <el-option label="草稿" :value="0" />
+            <el-option label="待班委审核" :value="1" />
+            <el-option label="待辅导员审核" :value="2" />
+            <el-option label="已通过" :value="3" />
+            <el-option label="已驳回" :value="4" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery" v-hasPermi="['evaluation:submission:history']">查询历史</el-button>
           <el-button @click="resetQuery">重置</el-button>
@@ -83,7 +93,7 @@ export default {
   components: { Detail },
   data() {
     return {
-      queryParams: { academicYear: '', semester: undefined },
+      queryParams: { academicYear: '', semester: undefined, status: undefined },
       list: [],
       page: { pageNum: 1, pageSize: 10, total: 0 },
       detailOpen: false,
@@ -103,17 +113,31 @@ export default {
     handleQuery() {
       this.loading = true
       const params = {
-        academicYear: this.queryParams.academicYear || undefined,
-        semester: this.queryParams.semester || undefined,
         pageNum: this.page.pageNum,
         pageSize: this.page.pageSize
       }
+
+      // 只添加有值的参数
+      if (this.queryParams.academicYear) {
+        params.academicYear = this.queryParams.academicYear
+      }
+      if (this.queryParams.semester !== undefined && this.queryParams.semester !== null) {
+        params.semester = this.queryParams.semester
+      }
+      if (this.queryParams.status !== undefined && this.queryParams.status !== null) {
+        params.status = this.queryParams.status
+      }
+
+      console.log('查询参数:', params) // 调试信息
+
       getSubmissionHistory(params)
         .then(res => {
+          console.log('查询结果:', res) // 调试信息
           this.list = res.rows || []
           this.page.total = res.total || 0
         })
         .catch(err => {
+          console.error('查询失败:', err) // 调试信息
           this.$message.error((err && err.message) || '历史加载失败')
           this.list = []
           this.page.total = 0
@@ -129,6 +153,9 @@ export default {
     resetQuery() {
       this.queryParams.academicYear = ''
       this.queryParams.semester = undefined
+      this.queryParams.status = undefined
+      this.page.pageNum = 1
+      this.handleQuery()
     },
     getStatusType(status) {
       const statusMap = {

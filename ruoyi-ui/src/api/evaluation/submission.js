@@ -35,8 +35,25 @@ export function getSubmissionDetail(id) {
   })
 }
 
+// 获取填报详情（别名，用于兼容）
+export function getSubmission(id) {
+  return request({
+    url: `/evaluation/submission/${id}`,
+    method: 'get'
+  })
+}
+
 // 获取填报列表（审核用）
 export function getSubmissionList(params) {
+  return request({
+    url: '/evaluation/submission/list',
+    method: 'get',
+    params
+  })
+}
+
+// 获取填报列表（别名，用于兼容）
+export function listSubmission(params) {
   return request({
     url: '/evaluation/submission/list',
     method: 'get',

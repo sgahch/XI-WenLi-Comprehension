@@ -138,6 +138,14 @@ public class SysDeptServiceImpl implements ISysDeptService
         return deptMapper.selectNormalChildrenDeptById(deptId);
     }
 
+    @Override
+    public List<SysDept> selectChildrenDeptById(Long deptId)
+    {
+        // 通过mapper层去查子部门
+        return deptMapper.selectChildrenDeptById(deptId);
+    }
+
+
     /**
      * 是否存在子节点
      * 

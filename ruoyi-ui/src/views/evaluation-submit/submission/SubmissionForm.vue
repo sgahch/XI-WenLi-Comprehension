@@ -80,19 +80,14 @@
               </el-col>
               <el-col :span="8">
                 <el-form-item label="班级" prop="classId">
-                  <el-select 
-                    v-model="formData.classId" 
-                    placeholder="请选择班级"
-                    :disabled="isViewMode"
+                  <el-input
+                    v-model="className"
+                    placeholder="加载中..."
+                    :disabled="true"
                     style="width: 100%"
                   >
-                    <el-option
-                      v-for="cls in classOptions"
-                      :key="cls.id"
-                      :label="cls.name"
-                      :value="cls.id"
-                    />
-                  </el-select>
+                    <i slot="prefix" class="el-icon-school"></i>
+                  </el-input>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -123,16 +118,62 @@
 
             <!-- 智育 -->
             <el-tab-pane label="智育" name="intellectual">
-              <achievement-dimension
-                ref="intellectualDimension"
-                dimension="intellectual"
-                dimension-name="智育"
-                :achievements="achievements.intellectual"
-                :rule-options="ruleOptions.intellectual"
-                :is-view-mode="isViewMode"
-                @achievement-change="handleAchievementChange"
-                @score-change="updateDimensionScore"
-              />
+              <!-- 成绩截图上传区域 -->
+              <el-card shadow="never" class="screenshot-upload-card">
+                <div slot="header">
+                  <i class="el-icon-picture-outline"></i>
+                  <span>成绩截图上传</span>
+                  <el-tooltip content="请上传教务系统的成绩截图，用于核验智育成绩" placement="top">
+                    <i class="el-icon-question" style="margin-left: 8px; color: #909399; cursor: help;"></i>
+                  </el-tooltip>
+                </div>
+                <grade-screenshot-upload
+                  v-model="gradeScreenshots"
+                  :submission-id="submissionId"
+                  :is-view-mode="isViewMode"
+                  @change="handleScreenshotChange"
+                />
+              </el-card>
+
+              <!-- 课程成绩录入区域 -->
+              <el-card shadow="never" class="course-grade-card">
+                <div slot="header">
+                  <i class="el-icon-edit"></i>
+                  <span>课程成绩录入</span>
+                  <el-tooltip content="请根据成绩截图录入各科成绩，系统将自动计算加分" placement="top">
+                    <i class="el-icon-question" style="margin-left: 8px; color: #909399; cursor: help;"></i>
+                  </el-tooltip>
+                </div>
+                <course-grade-input
+                  ref="courseGradeInput"
+                  :achievements="courseAchievements"
+                  :rule-options="flatIntellectualRules"
+                  :is-view-mode="isViewMode"
+                  @achievement-change="handleCourseAchievementChange"
+                  @score-change="handleCourseScoreChange"
+                />
+              </el-card>
+
+              <!-- 其他智育成果（学科竞赛、科研项目等） -->
+              <el-card shadow="never" class="other-achievement-card">
+                <div slot="header">
+                  <i class="el-icon-trophy"></i>
+                  <span>其他智育成果</span>
+                  <el-tooltip content="学科竞赛、科研项目、学术论文等" placement="top">
+                    <i class="el-icon-question" style="margin-left: 8px; color: #909399; cursor: help;"></i>
+                  </el-tooltip>
+                </div>
+                <achievement-dimension
+                  ref="intellectualDimension"
+                  dimension="intellectual"
+                  dimension-name="智育"
+                  :achievements="otherIntellectualAchievements"
+                  :rule-options="otherIntellectualRuleOptions"
+                  :is-view-mode="isViewMode"
+                  @achievement-change="handleOtherAchievementChange"
+                  @score-change="handleOtherScoreChange"
+                />
+              </el-card>
             </el-tab-pane>
 
             <!-- 体育 -->
@@ -196,15 +237,20 @@
 
 <script>
 import AchievementDimension from './components/AchievementDimension.vue'
+import CourseGradeInput from './components/CourseGradeInput.vue'
 import ScoreOverview from './components/ScoreOverview.vue'
+import GradeScreenshotUpload from '@/components/evaluation/GradeScreenshotUpload.vue'
 import { getRuleTree, createSubmission, updateSubmission, getSubmissionDetail } from '@/api/evaluation/submission'
 import { listDept } from '@/api/system/dept'
+import { parseTime } from '@/utils/ruoyi'
 
 export default {
   name: 'SubmissionForm',
   components: {
     AchievementDimension,
-    ScoreOverview
+    CourseGradeInput,
+    ScoreOverview,
+    GradeScreenshotUpload
   },
   props: {
     // 表单模式：add-新增, edit-编辑, view-查看
@@ -241,6 +287,18 @@ export default {
         aesthetic: [],
         labor: []
       },
+
+      // 成绩截图列表
+      gradeScreenshots: [],
+
+      // 成绩截图URL列表（用于提交）
+      gradeScreenshotUrls: [],
+
+      // 填报ID（用于成绩截图上传）
+      submissionId: null,
+
+      // 班级名称（只读展示）
+      className: '',
 
       // 各维度规则选项（级联数据）
       ruleOptions: {
@@ -282,7 +340,10 @@ export default {
       // 加载状态
       loading: false,
       saving: false,
-      submitting: false
+      submitting: false,
+
+      // 自动保存定时器
+      autoSaveTimer: null
     }
   },
   computed: {
@@ -294,6 +355,75 @@ export default {
     // 总分
     totalScore() {
       return Object.values(this.scoreOverview).reduce((sum, item) => sum + item.score, 0)
+    },
+
+    // 课程成绩（从智育成果中过滤）
+    courseAchievements() {
+      return this.achievements.intellectual.filter(a => a.category === '课程成绩')
+    },
+
+    // 其他智育成果（非课程成绩）
+    otherIntellectualAchievements() {
+      return this.achievements.intellectual.filter(a => a.category !== '课程成绩')
+    },
+
+    // 其他智育规则选项（非课程成绩）
+    otherIntellectualRuleOptions() {
+      return this.ruleOptions.intellectual.filter(r => r.category !== '课程成绩')
+    },
+
+    // 扁平化的智育规则列表（用于CourseGradeInput组件）
+    flatIntellectualRules() {
+      const flatRules = []
+
+      // 安全检查：确保 ruleOptions.intellectual 是数组
+      if (!Array.isArray(this.ruleOptions.intellectual)) {
+        console.warn('[SubmissionForm] ruleOptions.intellectual 不是数组:', this.ruleOptions.intellectual)
+        return flatRules
+      }
+
+      // 遍历级联数据结构，提取所有规则
+      this.ruleOptions.intellectual.forEach(category => {
+        // 安全检查：确保 category.children 存在
+        if (!category || !Array.isArray(category.children)) {
+          console.warn('[SubmissionForm] category.children 不存在或不是数组:', category)
+          return
+        }
+
+        category.children.forEach(item => {
+          // 安全检查：确保 item.children 存在
+          if (!item || !Array.isArray(item.children)) {
+            console.warn('[SubmissionForm] item.children 不存在或不是数组:', item)
+            return
+          }
+
+          item.children.forEach(level => {
+            // 安全检查：确保 level 和 level.ruleData 存在
+            if (!level || !level.ruleData) {
+              console.warn('[SubmissionForm] level 或 level.ruleData 不存在:', level)
+              return
+            }
+
+            flatRules.push({
+              id: level.value,
+              category: category.value,
+              itemName: item.value,
+              level: level.ruleData.level,
+              score: level.score,
+              requireAttachment: level.requireAttachment,
+              attachmentTypes: level.attachmentTypes,
+              ruleData: level.ruleData,
+              // 添加课程相关字段（如果存在）
+              courseCode: level.ruleData.courseCode || level.ruleData.itemCode || '',
+              credit: level.ruleData.credit || 0,
+              gradePoint: level.ruleData.gradePoint || 0
+            })
+          })
+        })
+      })
+
+      console.log('[SubmissionForm] flatIntellectualRules 生成完成，共', flatRules.length, '条规则')
+      return flatRules
     }
   },
   watch: {
@@ -309,6 +439,12 @@ export default {
   },
   created() {
     this.initializeData()
+  },
+  watch: {
+    // 监听基本信息变化，自动保存草稿
+    'formData.academicYear': 'checkAndAutoSaveDraft',
+    'formData.semester': 'checkAndAutoSaveDraft',
+    'formData.classId': 'checkAndAutoSaveDraft'
   },
   methods: {
     // 初始化数据
@@ -351,35 +487,31 @@ export default {
       this.academicYearOptions = years
     },
 
-    // 加载班级选项
+    // 加载班级信息（从用户信息中获取）
     async loadClassOptions() {
       try {
         // 从store获取用户信息
-        const userInfo = this.$store.getters.userInfo
-        
-        // 模拟班级数据，实际应该根据用户权限获取可管理的班级
-        // 这里假设用户可以管理多个班级，格式为：软件工程2401, 软件工程2402等
-        // 只显示班级编号部分（如2401, 2402）
-        const mockClasses = [
-          { id: 200, name: '2401', fullName: '软件工程2401' },
-          { id: 201, name: '2402', fullName: '软件工程2402' },
-          { id: 202, name: '2403', fullName: '软件工程2403' },
-          { id: 203, name: '2401', fullName: '计算机科学2401' },
-          { id: 204, name: '2402', fullName: '计算机科学2402' }
-        ]
-        
-        this.classOptions = mockClasses
-        
-        // 如果用户有默认班级，自动选中
-        if (userInfo && userInfo.deptId) {
-          // 这里可以根据用户的部门ID匹配对应的班级
-          // 暂时设置第一个班级为默认值
-          if (!this.formData.classId && mockClasses.length > 0) {
-            this.formData.classId = mockClasses[0].id
-          }
+        const dept = this.$store.getters.dept
+        const deptId = this.$store.getters.deptId
+
+        if (dept && dept.deptId && dept.deptName) {
+          // 自动设置用户所属班级
+          this.formData.classId = dept.deptId
+          this.className = dept.deptName
+          console.log('已自动设置班级:', dept.deptName)
+        } else if (deptId) {
+          // 如果只有deptId，没有dept对象
+          this.formData.classId = deptId
+          this.className = '班级ID: ' + deptId
+          console.warn('部门信息不完整，只有deptId:', deptId)
+        } else {
+          this.$message.error('无法获取用户班级信息，请联系管理员')
+          this.className = '未设置班级'
         }
       } catch (error) {
-        console.error('加载班级选项失败:', error)
+        console.error('加载班级信息失败:', error)
+        this.$message.error('加载班级信息失败')
+        this.className = '加载失败'
       }
     },
 
@@ -415,8 +547,10 @@ export default {
             requireAttachment: level.requireAttachment,
             attachmentTypes: level.attachmentTypes,
             ruleData: level,
-            // 从id字段解析生成ruleId，用于临时兼容后端未修改的情况
-            ruleId: parseInt(level.id.split("_").pop()) || null
+            // 兼容处理：如果id是字符串则解析，如果是数字则直接使用
+            ruleId: typeof level.id === 'string'
+              ? (parseInt(level.id.split("_").pop()) || null)
+              : level.id
           }))
         }))
       }))
@@ -440,7 +574,7 @@ export default {
         const response = await getSubmissionDetail(this.recordId)
         if (response.code === 200) {
           const data = response.data
-          
+
           // 设置基本信息
           this.formData = {
             id: data.id,
@@ -451,9 +585,12 @@ export default {
             remark: data.remark || ''
           }
 
+          // 设置submissionId（用于成绩截图上传）
+          this.submissionId = data.id
+
           // 设置成果数据
           this.loadAchievementsFromDetails(data.details)
-          
+
           // 更新分数总览
           this.updateAllScores()
         }
@@ -497,14 +634,95 @@ export default {
       this.updateDimensionScore(dimension)
     },
 
+    // 处理课程成绩变化
+    handleCourseAchievementChange(dimension, courseList) {
+      console.log('[SubmissionForm] 课程成绩变更:', courseList)
+
+      // 防止重复更新：检查是否真的有变化
+      const otherAchievements = this.achievements.intellectual.filter(a => a.category !== '课程成绩')
+      const newIntellectual = [...courseList, ...otherAchievements]
+
+      // 生成指纹比较
+      const oldFingerprint = this.achievements.intellectual
+        .map(a => `${a.ruleId}-${a.grade}-${a.score}-${a.level}`)
+        .sort()
+        .join('|')
+      const newFingerprint = newIntellectual
+        .map(a => `${a.ruleId}-${a.grade}-${a.score}-${a.level}`)
+        .sort()
+        .join('|')
+
+      if (oldFingerprint === newFingerprint) {
+        console.log('[SubmissionForm] 课程成绩无实质变化，跳过更新')
+        return
+      }
+
+      this.achievements.intellectual = newIntellectual
+      console.log('[SubmissionForm] 合并后的智育成果:', this.achievements.intellectual)
+      this.updateDimensionScore('intellectual')
+    },
+
+    // 处理课程成绩分数变化
+    handleCourseScoreChange(dimension, score) {
+      console.log('[SubmissionForm] 课程成绩分数变更:', score)
+      // 重新计算智育总分
+      this.updateDimensionScore('intellectual')
+    },
+
+    // 处理其他智育成果变化
+    handleOtherAchievementChange(dimension, otherList) {
+      console.log('[SubmissionForm] 其他智育成果变更:', otherList)
+
+      // 防止重复更新：检查是否真的有变化
+      const courseAchievements = this.achievements.intellectual.filter(a => a.category === '课程成绩')
+      const newIntellectual = [...courseAchievements, ...otherList]
+
+      // 生成指纹比较
+      const oldFingerprint = this.achievements.intellectual
+        .map(a => `${a.ruleId}-${a.grade}-${a.score}-${a.level}`)
+        .sort()
+        .join('|')
+      const newFingerprint = newIntellectual
+        .map(a => `${a.ruleId}-${a.grade}-${a.score}-${a.level}`)
+        .sort()
+        .join('|')
+
+      if (oldFingerprint === newFingerprint) {
+        console.log('[SubmissionForm] 其他智育成果无实质变化，跳过更新')
+        return
+      }
+
+      this.achievements.intellectual = newIntellectual
+      console.log('[SubmissionForm] 合并后的智育成果:', this.achievements.intellectual)
+      this.updateDimensionScore('intellectual')
+    },
+
+    // 处理其他智育成果分数变化
+    handleOtherScoreChange(dimension, score) {
+      console.log('[SubmissionForm] 其他智育成果分数变更:', score)
+      // 重新计算智育总分
+      this.updateDimensionScore('intellectual')
+    },
+
+    // 处理成绩截图变化
+    handleScreenshotChange(screenshots) {
+      this.gradeScreenshots = screenshots
+      // 提取URL列表
+      this.gradeScreenshotUrls = screenshots.map(item => item.url)
+      console.log('成绩截图已更新:', screenshots)
+      console.log('成绩截图URLs:', this.gradeScreenshotUrls)
+    },
+
     // 更新维度分数
     updateDimensionScore(dimension) {
       const dimensionAchievements = this.achievements[dimension]
       const totalScore = dimensionAchievements.reduce((sum, achievement) => {
         return sum + (achievement.score || 0)
       }, 0)
-      
-      this.scoreOverview[dimension].score = totalScore
+
+      // 使用 Vue.set 确保响应式更新
+      this.$set(this.scoreOverview[dimension], 'score', totalScore)
+      console.log(`[SubmissionForm] 更新${dimension}维度分数: ${totalScore}`)
     },
 
     // 更新所有分数
@@ -514,7 +732,49 @@ export default {
       })
     },
 
-    // 保存草稿到本地缓存
+    // 检查并自动保存草稿
+    async checkAndAutoSaveDraft() {
+      // 检查基本信息是否完整
+      if (this.formData.academicYear &&
+          this.formData.semester &&
+          this.formData.classId &&
+          !this.submissionId && // 只在没有submissionId时创建
+          !this.isViewMode) { // 非查看模式
+
+        // 延迟执行，避免频繁调用
+        if (this.autoSaveTimer) {
+          clearTimeout(this.autoSaveTimer)
+        }
+
+        this.autoSaveTimer = setTimeout(() => {
+          this.autoSaveDraft()
+        }, 1000) // 1秒后执行
+      }
+    },
+
+    // 自动保存草稿到后端
+    async autoSaveDraft() {
+      try {
+        console.log('开始自动保存草稿...')
+
+        const submissionData = this.buildSubmissionData(0) // 0-草稿状态
+
+        const response = await createSubmission(submissionData)
+
+        if (response.code === 200 && response.data && response.data.id) {
+          this.submissionId = response.data.id
+          this.formData.id = response.data.id
+
+          this.$message.success('基本信息已自动保存')
+          console.log('自动保存草稿成功，submissionId:', this.submissionId)
+        }
+      } catch (error) {
+        console.error('自动保存草稿失败:', error)
+        // 不显示错误提示，避免打扰用户
+      }
+    },
+
+    // 保存草稿到本地缓存（保留原有功能）
     async saveDraft() {
       if (!await this.validateForm()) {
         return
@@ -523,21 +783,21 @@ export default {
       this.saving = true
       try {
         const submissionData = this.buildSubmissionData(0) // 0-草稿状态
-        
+
         // 生成草稿缓存key（加入用户维度，避免跨账号污染）
         const userKey = (this.$store && this.$store.getters) ? (this.$store.getters.userId || this.$store.getters.name || 'anon') : 'anon'
         const draftKey = `evaluationSubmissionDraft_${userKey}_${this.formData.academicYear}_${this.formData.semester}_${this.formData.classId || 'new'}`
-        
+
         // 保存草稿数据到本地缓存
         const draftData = {
           ...submissionData,
           timestamp: Date.now(),
           achievements: this.achievements // 保存成果数据
         }
-        
+
         this.$cache.local.setJSON(draftKey, draftData)
         this.$message.success('草稿已保存到本地')
-        
+
         console.log('草稿保存成功:', draftKey)
       } catch (error) {
         console.error('保存草稿失败:', error)
@@ -570,10 +830,12 @@ export default {
 
         if (response.code === 200) {
           this.$message.success('提交成功，等待审核')
-          
+
           // 添加空值检查，防止undefined对象访问错误
           if (response.data && response.data.id) {
             this.formData.id = response.data.id
+            // 设置submissionId，用于成绩截图上传
+            this.submissionId = response.data.id
           } else {
             console.warn('响应数据中缺少id字段:', response)
           }
@@ -671,25 +933,53 @@ export default {
               })
             }
           }
-          
-          details.push({
+
+          // 构建详情对象
+          const detail = {
             ruleId: achievement.ruleId,
             finalScore: achievement.score,
             remark: achievement.remark,
             attachments: attachments
-          })
+          }
+
+          // 如果是课程成绩，需要添加自定义的 ruleSnapshot
+          if (achievement.category === '课程成绩' && achievement.grade !== undefined) {
+            // 构建包含课程成绩信息的 ruleSnapshot
+            const ruleSnapshot = {
+              dimensionType: 1, // 智育
+              category: '课程成绩',
+              itemName: achievement.itemName || achievement.courseName || '',
+              courseCode: achievement.courseCode || '',
+              credit: achievement.credit || 0,
+              grade: achievement.grade, // 学生的实际成绩
+              gradePoint: achievement.gradePoint || 0,
+              level: achievement.level || '',
+              score: achievement.score || 0
+            }
+            detail.ruleSnapshot = JSON.stringify(ruleSnapshot)
+          }
+
+          details.push(detail)
         })
       })
 
-      return {
+      const result = {
         id: this.formData.id,
         academicYear: this.formData.academicYear,
         semester: this.formData.semester,
         classId: this.formData.classId,
         status: status,
         remark: this.formData.remark,
-        details: details
+        details: details,
+        gradeScreenshotUrls: this.gradeScreenshotUrls // 新增：成绩截图URL列表
       }
+
+      // 如果是提交审核（status=1），添加提交时间
+      if (status === 1) {
+        result.submitTime = parseTime(new Date(), '{y}-{m}-{d} {h}:{i}:{s}')
+      }
+
+      return result
     },
 
     // 从URL中提取文件名
@@ -705,31 +995,32 @@ export default {
         const userKey = (this.$store && this.$store.getters) ? (this.$store.getters.userId || this.$store.getters.name || 'anon') : 'anon'
         const draftKey = `evaluationSubmissionDraft_${userKey}_${this.formData.academicYear}_${this.formData.semester}_${this.formData.classId || 'new'}`
         const draftData = this.$cache.local.getJSON(draftKey)
-        
+
         if (draftData) {
-          // 检查草稿是否过期（24小时），无时间戳视为过期
+          // 检查草稿是否过期（3天），无时间戳视为过期
+          const THREE_DAYS = 3 * 24 * 60 * 60 * 1000
           const timestamp = draftData.timestamp || 0
-          const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000
-          
+          const isExpired = Date.now() - timestamp > THREE_DAYS
+
           if (!isExpired) {
             // 恢复表单数据
             if (draftData.academicYear) this.formData.academicYear = draftData.academicYear
             if (draftData.semester) this.formData.semester = draftData.semester
             if (draftData.classId) this.formData.classId = draftData.classId
             if (draftData.remark) this.formData.remark = draftData.remark
-            
+
             // 恢复成果数据
             if (draftData.achievements) {
               this.achievements = { ...this.achievements, ...draftData.achievements }
               this.updateAllScores()
             }
-            
+
             this.$message.success('已恢复本地草稿数据')
             console.log('草稿加载成功:', draftKey)
           } else {
-            // 清除过期草稿
+            // 清除过期草稿（3天）
             this.$cache.local.remove(draftKey)
-            console.log('草稿已过期，已清除:', draftKey)
+            console.log('草稿已过期（超过3天），已清除:', draftKey)
           }
         }
       } catch (error) {
@@ -819,6 +1110,26 @@ export default {
     
     ::v-deep .el-tabs__content {
       padding: 0;
+    }
+  }
+}
+
+.screenshot-upload-card {
+  margin-bottom: 20px;
+
+  ::v-deep .el-card__header {
+    background-color: #f0f9ff;
+    border-bottom: 1px solid #d1e7fd;
+    padding: 12px 20px;
+
+    i {
+      color: #409eff;
+      margin-right: 8px;
+    }
+
+    span {
+      font-weight: 600;
+      color: #303133;
     }
   }
 }

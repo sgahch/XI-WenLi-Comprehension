@@ -14,7 +14,9 @@ const user = {
     nickName: '',
     avatar: '',
     roles: [],
-    permissions: []
+    permissions: [],
+    deptId: '',
+    dept: null
   },
 
   mutations: {
@@ -38,6 +40,12 @@ const user = {
     },
     SET_PERMISSIONS: (state, permissions) => {
       state.permissions = permissions
+    },
+    SET_DEPT_ID: (state, deptId) => {
+      state.deptId = deptId
+    },
+    SET_DEPT: (state, dept) => {
+      state.dept = dept
     }
   },
 
@@ -77,6 +85,9 @@ const user = {
           commit('SET_ID', user.userId)
           commit('SET_NICK_NAME', user.nickName || user.userName)
           commit('SET_AVATAR', avatar)
+          // 新增：保存部门信息
+          commit('SET_DEPT_ID', user.deptId || '')
+          commit('SET_DEPT', user.dept || null)
           resolve(res)
         }).catch(error => {
           reject(error)

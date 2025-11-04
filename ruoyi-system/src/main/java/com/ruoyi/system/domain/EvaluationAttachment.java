@@ -44,6 +44,10 @@ public class EvaluationAttachment extends BaseEntity
     @Excel(name = "文件类型")
     private String fileType;
 
+    /** 附件类型：CERTIFICATE-证书材料，GRADE_SCREENSHOT-成绩截图 */
+    @Excel(name = "附件类型")
+    private String attachmentType;
+
     /** 访问URL */
     @Excel(name = "访问URL")
     private String url;
@@ -116,16 +120,25 @@ public class EvaluationAttachment extends BaseEntity
         this.fileType = fileType;
     }
 
-    public String getFileType() 
+    public String getFileType()
     {
         return fileType;
     }
-    public void setUrl(String url) 
+    public void setAttachmentType(String attachmentType)
+    {
+        this.attachmentType = attachmentType;
+    }
+
+    public String getAttachmentType()
+    {
+        return attachmentType;
+    }
+    public void setUrl(String url)
     {
         this.url = url;
     }
 
-    public String getUrl() 
+    public String getUrl()
     {
         return url;
     }
@@ -158,6 +171,7 @@ public class EvaluationAttachment extends BaseEntity
             .append("filePath", getFilePath())
             .append("fileSize", getFileSize())
             .append("fileType", getFileType())
+            .append("attachmentType", getAttachmentType())
             .append("url", getUrl())
             .append("uploadTime", getUploadTime())
             .append("uploadBy", getUploadBy())

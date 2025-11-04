@@ -7,9 +7,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="EvaluationSubmission" id="EvaluationSubmissionResult">
         <result property="id"    column="id"    />
         <result property="userId"    column="student_id"    />
+        <result property="studentName"    column="student_name"    />
+        <result property="studentNumber"    column="student_number"    />
         <result property="academicYear"    column="academic_year"    />
         <result property="semester"    column="semester"    />
         <result property="classId"    column="class_id"    />
+        <result property="className"    column="class_name"    />
         <result property="status"    column="status"    />
         <result property="moralScore"    column="moral_score"    />
         <result property="intellectualScore"    column="intellectual_score"    />
@@ -30,34 +33,61 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectEvaluationSubmissionVo">
-        select id, student_id, academic_year, semester, class_id, status, moral_score, intellectual_score, physical_score, aesthetic_score, labor_score, total_score, submit_time, audit_time, audit_by, audit_comment, create_by, create_time, update_by, update_time, remark from evaluation_submission
+        select
+            s.id,
+            s.student_id,
+            u.nick_name as student_name,
+            u.user_name as student_number,
+            s.academic_year,
+            s.semester,
+            s.class_id,
+            d.dept_name as class_name,
+            s.status,
+            s.moral_score,
+            s.intellectual_score,
+            s.physical_score,
+            s.aesthetic_score,
+            s.labor_score,
+            s.total_score,
+            s.submit_time,
+            s.audit_time,
+            s.audit_by,
+            s.audit_comment,
+            s.create_by,
+            s.create_time,
+            s.update_by,
+            s.update_time,
+            s.remark
+        from evaluation_submission s
+        left join sys_user u on s.student_id = u.user_id
+        left join sys_dept d on s.class_id = d.dept_id
     </sql>
 
     <select id="selectEvaluationSubmissionList" parameterType="EvaluationSubmission" resultMap="EvaluationSubmissionResult">
         <include refid="selectEvaluationSubmissionVo"/>
-        <where>  
-            <if test="userId != null "> and student_id = #{userId}</if>
-            <if test="academicYear != null  and academicYear != ''"> and academic_year = #{academicYear}</if>
-            <if test="semester != null  and semester != ''"> and semester = #{semester}</if>
-            <if test="classId != null "> and class_id = #{classId}</if>
-            <if test="status != null  and status != ''"> and status = #{status}</if>
-            <if test="moralScore != null "> and moral_score = #{moralScore}</if>
-            <if test="intellectualScore != null "> and intellectual_score = #{intellectualScore}</if>
-            <if test="physicalScore != null "> and physical_score = #{physicalScore}</if>
-            <if test="aestheticScore != null "> and aesthetic_score = #{aestheticScore}</if>
-            <if test="laborScore != null "> and labor_score = #{laborScore}</if>
-            <if test="totalScore != null "> and total_score = #{totalScore}</if>
-            <if test="submitTime != null "> and submit_time = #{submitTime}</if>
-            <if test="auditTime != null "> and audit_time = #{auditTime}</if>
-            <if test="auditBy != null "> and audit_by = #{auditBy}</if>
-            <if test="auditComment != null  and auditComment != ''"> and audit_comment = #{auditComment}</if>
+        <where>
+            <if test="userId != null "> and s.student_id = #{userId}</if>
+            <if test="academicYear != null  and academicYear != ''"> and s.academic_year = #{academicYear}</if>
+            <if test="semester != null  and semester != ''"> and s.semester = #{semester}</if>
+            <if test="classId != null "> and s.class_id = #{classId}</if>
+            <if test="status != null  and status != ''"> and s.status = #{status}</if>
+            <if test="moralScore != null "> and s.moral_score = #{moralScore}</if>
+            <if test="intellectualScore != null "> and s.intellectual_score = #{intellectualScore}</if>
+            <if test="physicalScore != null "> and s.physical_score = #{physicalScore}</if>
+            <if test="aestheticScore != null "> and s.aesthetic_score = #{aestheticScore}</if>
+            <if test="laborScore != null "> and s.labor_score = #{laborScore}</if>
+            <if test="totalScore != null "> and s.total_score = #{totalScore}</if>
+            <if test="submitTime != null "> and s.submit_time = #{submitTime}</if>
+            <if test="auditTime != null "> and s.audit_time = #{auditTime}</if>
+            <if test="auditBy != null "> and s.audit_by = #{auditBy}</if>
+            <if test="auditComment != null  and auditComment != ''"> and s.audit_comment = #{auditComment}</if>
         </where>
-        order by create_time desc
+        order by s.create_time desc
     </select>
-    
+
     <select id="selectEvaluationSubmissionById" parameterType="Long" resultMap="EvaluationSubmissionResult">
         <include refid="selectEvaluationSubmissionVo"/>
-        where id = #{id}
+        where s.id = #{id}
     </select>
 
     <!-- 提交时插入或更新记录（避免唯一索引冲突） -->

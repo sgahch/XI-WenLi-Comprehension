@@ -29,6 +29,7 @@ CREATE TABLE `evaluation_attachment`  (
   `file_path` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件存储路径',
   `file_size` bigint NOT NULL DEFAULT 0 COMMENT '文件大小（字节）',
   `file_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件类型：PDF/JPG/PNG等',
+  `attachment_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'CERTIFICATE' COMMENT '附件类型：CERTIFICATE-证书材料，GRADE_SCREENSHOT-成绩截图',
   `url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '访问URL',
   `upload_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '上传者',
   `upload_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
@@ -37,6 +38,7 @@ CREATE TABLE `evaluation_attachment`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_detail_id`(`detail_id` ASC) USING BTREE,
   INDEX `idx_file_type`(`file_type` ASC) USING BTREE,
+  INDEX `idx_attachment_type`(`attachment_type` ASC) USING BTREE,
   CONSTRAINT `fk_attachment_detail` FOREIGN KEY (`detail_id`) REFERENCES `evaluation_submission_detail` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
 ) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '附件表' ROW_FORMAT = Dynamic;
 
@@ -82,6 +84,67 @@ INSERT INTO `evaluation_audit_log` VALUES (2, NULL, 1, 102, 'APPROVE', 0, 1, '�
 INSERT INTO `evaluation_audit_log` VALUES (3, 5, NULL, 1, 'APPROVE', 1, 2, '', '2025-10-28 21:49:32', '127.0.0.1');
 INSERT INTO `evaluation_audit_log` VALUES (4, 2, NULL, 1, 'APPROVE', 1, 2, '', '2025-10-29 20:52:27', '127.0.0.1');
 INSERT INTO `evaluation_audit_log` VALUES (5, 6, NULL, 1, 'APPROVE', 1, 2, '', '2025-11-02 17:22:37', '127.0.0.1');
+
+-- ----------------------------
+-- Table structure for evaluation_publicity
+-- ----------------------------
+DROP TABLE IF EXISTS `evaluation_publicity`;
+CREATE TABLE `evaluation_publicity`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '公示ID',
+  `academic_year` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学年',
+  `semester` tinyint NOT NULL COMMENT '学期',
+  `class_id` bigint NOT NULL COMMENT '班级ID',
+  `class_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '班级名称（冗余）',
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '公示标题',
+  `start_time` datetime NOT NULL COMMENT '公示开始时间',
+  `end_time` datetime NOT NULL COMMENT '公示结束时间',
+  `status` tinyint NULL DEFAULT 0 COMMENT '状态：0-公示中，1-已结束',
+  `total_count` int NULL DEFAULT 0 COMMENT '公示人数',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '创建者',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '更新者',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_class_year_semester`(`class_id` ASC, `academic_year` ASC, `semester` ASC) USING BTREE,
+  INDEX `idx_status`(`status` ASC) USING BTREE,
+  INDEX `idx_end_time`(`end_time` ASC) USING BTREE,
+  INDEX `idx_academic_year`(`academic_year` ASC, `semester` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '考评结果公示表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of evaluation_publicity
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for evaluation_publicity_detail
+-- ----------------------------
+DROP TABLE IF EXISTS `evaluation_publicity_detail`;
+CREATE TABLE `evaluation_publicity_detail`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '详情ID',
+  `publicity_id` bigint NOT NULL COMMENT '公示ID',
+  `submission_id` bigint NOT NULL COMMENT '填报ID',
+  `student_id` bigint NOT NULL COMMENT '学生ID',
+  `student_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学生姓名',
+  `student_number` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学号',
+  `total_score` decimal(8, 2) NOT NULL COMMENT '总分',
+  `moral_score` decimal(6, 2) NOT NULL COMMENT '德育分',
+  `intellectual_score` decimal(6, 2) NOT NULL COMMENT '智育分',
+  `physical_score` decimal(6, 2) NOT NULL COMMENT '体育分',
+  `aesthetic_score` decimal(6, 2) NOT NULL COMMENT '美育分',
+  `labor_score` decimal(6, 2) NOT NULL COMMENT '劳育分',
+  `class_rank` int NOT NULL COMMENT '班级排名',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_publicity_id`(`publicity_id` ASC) USING BTREE,
+  INDEX `idx_student_id`(`student_id` ASC) USING BTREE,
+  INDEX `idx_submission_id`(`submission_id` ASC) USING BTREE,
+  INDEX `idx_class_rank`(`class_rank` ASC) USING BTREE,
+  CONSTRAINT `fk_publicity_detail_publicity` FOREIGN KEY (`publicity_id`) REFERENCES `evaluation_publicity` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '公示详情表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of evaluation_publicity_detail
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for evaluation_rule

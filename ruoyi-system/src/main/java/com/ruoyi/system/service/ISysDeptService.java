@@ -68,6 +68,15 @@ public interface ISysDeptService
     public int selectNormalChildrenDeptById(Long deptId);
 
     /**
+     * 根据部门ID查询所有子部门（包含本部门）
+     *
+     * @param deptId 部门ID
+     * @return 子部门列表
+     */
+    public List<SysDept> selectChildrenDeptById(Long deptId);
+
+
+    /**
      * 是否存在部门子节点
      * 
      * @param deptId 部门ID

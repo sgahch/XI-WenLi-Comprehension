@@ -21,4 +21,12 @@ public interface EvaluationSubmissionDetailMapper {
      * 批量新增详情
      */
     int insertBatch(List<EvaluationSubmissionDetail> details);
+
+    /**
+     * 根据提交ID查询详情列表
+     *
+     * @param submissionId 提交ID
+     * @return 详情列表
+     */
+    List<EvaluationSubmissionDetail> selectBySubmissionId(Long submissionId);
 }

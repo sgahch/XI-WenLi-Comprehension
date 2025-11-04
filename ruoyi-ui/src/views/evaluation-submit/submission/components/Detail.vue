@@ -1,15 +1,37 @@
 <template>
   <div class="detail-container">
-    <!-- 顶部基础信息 -->
-    <el-descriptions title="填报详情" :column="2" border>
-      <el-descriptions-item label="学年">{{ record.academicYear || '—' }}</el-descriptions-item>
-      <el-descriptions-item label="学期">{{ semesterText }}</el-descriptions-item>
-      <el-descriptions-item label="状态">{{ statusText }}</el-descriptions-item>
-      <el-descriptions-item label="总分">{{ displayTotalScore }}</el-descriptions-item>
-      <el-descriptions-item label="提交时间">{{ record.submitTime || record.createTime || '—' }}</el-descriptions-item>
-      <el-descriptions-item label="审核时间">{{ record.auditTime || '—' }}</el-descriptions-item>
-      <el-descriptions-item label="备注" :span="2">{{ record.remark || '—' }}</el-descriptions-item>
-    </el-descriptions>
+    <!-- 学生基本信息 -->
+    <el-card shadow="never" class="info-card">
+      <div slot="header">
+        <i class="el-icon-user"></i>
+        <span>学生基本信息</span>
+      </div>
+      <el-descriptions :column="3" border>
+        <el-descriptions-item label="姓名">{{ record.studentName || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="学号">{{ record.studentNumber || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="班级">{{ record.className || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="学年学期" :span="2">
+          {{ record.academicYear || '—' }} 第{{ record.semester || '—' }}学期
+        </el-descriptions-item>
+        <el-descriptions-item label="提交时间">
+          {{ record.submitTime || record.createTime || '—' }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-card>
+
+    <!-- 填报状态信息 -->
+    <el-card shadow="never" class="info-card">
+      <div slot="header">
+        <i class="el-icon-document"></i>
+        <span>填报状态</span>
+      </div>
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="状态">{{ statusText }}</el-descriptions-item>
+        <el-descriptions-item label="总分">{{ displayTotalScore }}</el-descriptions-item>
+        <el-descriptions-item label="审核时间">{{ record.auditTime || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="备注" :span="2">{{ record.remark || '—' }}</el-descriptions-item>
+      </el-descriptions>
+    </el-card>
 
     <!-- 分维度汇总分数 -->
     <el-card shadow="never" class="section-card">
@@ -23,6 +45,28 @@
           <template slot-scope="scope">{{ scope.row.score.toFixed(2) }}</template>
         </el-table-column>
       </el-table>
+    </el-card>
+
+    <!-- 成绩截图 -->
+    <el-card shadow="never" class="section-card" v-if="gradeScreenshots.length > 0">
+      <div slot="header" class="section-header">
+        <i class="el-icon-picture-outline"></i>
+        <span>成绩截图</span>
+      </div>
+      <div class="screenshot-gallery">
+        <el-image
+          v-for="(screenshot, index) in gradeScreenshots"
+          :key="index"
+          :src="getImageUrl(screenshot.url)"
+          :preview-src-list="gradeScreenshots.map(s => getImageUrl(s.url))"
+          fit="cover"
+          class="screenshot-item"
+        >
+          <div slot="error" class="image-slot">
+            <i class="el-icon-picture-outline"></i>
+          </div>
+        </el-image>
+      </div>
     </el-card>
 
     <!-- 自我评价 -->
@@ -77,6 +121,31 @@
       </el-collapse>
     </el-card>
 
+    <!-- 审核记录 -->
+    <el-card shadow="never" class="section-card" v-if="auditLogs.length > 0">
+      <div slot="header" class="section-header">
+        <i class="el-icon-time"></i>
+        <span>审核记录</span>
+      </div>
+      <el-timeline>
+        <el-timeline-item
+          v-for="(log, index) in auditLogs"
+          :key="index"
+          :timestamp="log.auditTime"
+          placement="top"
+          :type="getTimelineType(log.operation)"
+          :icon="getTimelineIcon(log.operation)"
+        >
+          <el-card shadow="hover">
+            <h4>{{ getOperationText(log.operation) }}</h4>
+            <p><strong>审核人：</strong>{{ log.auditorName || '—' }}</p>
+            <p v-if="log.remark"><strong>审核意见：</strong>{{ log.remark }}</p>
+            <p><strong>状态变更：</strong>{{ getStatusText(log.oldStatus) }} → {{ getStatusText(log.newStatus) }}</p>
+          </el-card>
+        </el-timeline-item>
+      </el-timeline>
+    </el-card>
+
     <div class="detail-toolbar">
       <el-button type="primary" @click="reload" v-hasPermi="['evaluation:submission:query']">刷新</el-button>
     </div>
@@ -85,6 +154,7 @@
 
 <script>
 import { getSubmissionDetail } from '@/api/evaluation/submission'
+import { getAuditLogsBySubmissionId } from '@/api/evaluation/auditLog'
 
 export default {
   name: 'SubmissionDetail',
@@ -96,6 +166,8 @@ export default {
       loading: false,
       detail: null,
       activePanels: [],
+      auditLogs: [],
+      gradeScreenshots: [], // 成绩截图列表
       dimensionNameMap: {
         moral: '德育',
         intellectual: '智育',
@@ -182,11 +254,91 @@ export default {
           this.detail = resp.data || {}
           // 默认展开所有维度
           this.activePanels = Object.keys(this.groupedDetails)
+          // 提取成绩截图
+          this.extractGradeScreenshots()
         }
+        // 加载审核记录
+        await this.loadAuditLogs()
       } catch (e) {
         this.$message.error('加载详情失败')
       } finally {
         this.loading = false
+      }
+    },
+
+    // 提取成绩截图
+    extractGradeScreenshots() {
+      this.gradeScreenshots = []
+      console.log('开始提取成绩截图, detail:', this.detail) // 调试信息
+
+      if (!this.detail || !this.detail.details) {
+        console.log('没有详情数据') // 调试信息
+        return
+      }
+
+      console.log('详情列表:', this.detail.details) // 调试信息
+
+      // 查找智育维度的详情
+      const intellectualDetails = this.detail.details.filter(d => {
+        if (d.ruleSnapshot) {
+          try {
+            const snapshot = typeof d.ruleSnapshot === 'string'
+              ? JSON.parse(d.ruleSnapshot)
+              : d.ruleSnapshot
+            console.log('规则快照:', snapshot) // 调试信息
+
+            // 检查 dimensionType（数字类型）：1=智育
+            if (snapshot.dimensionType === 1) {
+              return true
+            }
+
+            // 兼容旧版本：检查 dimension（字符串类型）
+            if (snapshot.dimension === 'intellectual') {
+              return true
+            }
+
+            return false
+          } catch (e) {
+            console.error('解析规则快照失败:', e) // 调试信息
+            return false
+          }
+        }
+        return false
+      })
+
+      console.log('智育维度详情:', intellectualDetails) // 调试信息
+
+      // 提取成绩截图附件
+      intellectualDetails.forEach(detail => {
+        console.log('详情附件:', detail.attachments) // 调试信息
+        if (detail.attachments && Array.isArray(detail.attachments)) {
+          detail.attachments.forEach(att => {
+            console.log('附件类型:', att.attachmentType) // 调试信息
+            if (att.attachmentType === 'GRADE_SCREENSHOT') {
+              this.gradeScreenshots.push({
+                url: att.url,
+                fileName: att.fileName || att.originalName
+              })
+            }
+          })
+        }
+      })
+
+      console.log('提取到的成绩截图:', this.gradeScreenshots) // 调试信息
+    },
+
+    async loadAuditLogs() {
+      if (!this.record || !this.record.id) return
+      try {
+        const resp = await getAuditLogsBySubmissionId(this.record.id)
+        if (resp && resp.code === 200) {
+          // 按时间倒序排列（最新的在上面）
+          this.auditLogs = (resp.data || []).sort((a, b) => {
+            return new Date(b.auditTime) - new Date(a.auditTime)
+          })
+        }
+      } catch (e) {
+        console.error('加载审核记录失败:', e)
       }
     },
     getAttachmentHref(att) {
@@ -199,6 +351,55 @@ export default {
       if (!att) return `附件${idx + 1}`
       if (typeof att === 'string') return att.split('/').pop() || `附件${idx + 1}`
       return att.name || att.fileName || `附件${idx + 1}`
+    },
+
+    getTimelineType(operation) {
+      const typeMap = {
+        'APPROVE': 'success',
+        'REJECT': 'danger',
+        'SUBMIT': 'primary'
+      }
+      return typeMap[operation] || 'info'
+    },
+
+    getTimelineIcon(operation) {
+      const iconMap = {
+        'APPROVE': 'el-icon-check',
+        'REJECT': 'el-icon-close',
+        'SUBMIT': 'el-icon-upload'
+      }
+      return iconMap[operation] || 'el-icon-info'
+    },
+
+    getOperationText(operation) {
+      const textMap = {
+        'APPROVE': '审核通过',
+        'REJECT': '审核驳回',
+        'SUBMIT': '提交审核'
+      }
+      return textMap[operation] || '未知操作'
+    },
+
+    // 获取图片URL
+    getImageUrl(url) {
+      if (!url) return ''
+      // 如果是完整URL，直接返回
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url
+      }
+      // 如果是相对路径，拼接基础URL
+      return process.env.VUE_APP_BASE_API + url
+    },
+
+    getStatusText(status) {
+      const map = {
+        0: '草稿',
+        1: '待班委审核',
+        2: '待辅导员审核',
+        3: '已通过',
+        4: '已驳回'
+      }
+      return map[status] || '—'
     }
   }
 }
@@ -206,9 +407,50 @@ export default {
 
 <style scoped>
 .detail-container { padding: 8px; }
+.info-card { margin-bottom: 16px; }
+.info-card >>> .el-card__header {
+  background-color: #f5f7fa;
+  padding: 12px 20px;
+}
+.info-card >>> .el-card__header i {
+  margin-right: 8px;
+  color: #409eff;
+}
 .detail-toolbar { margin-top: 12px; display: flex; gap: 8px; }
 .section-card { margin-top: 12px; }
 .section-header { display:flex; align-items:center; gap:8px; font-weight:600; }
 .attachments { display: flex; flex-wrap: wrap; gap: 6px; }
 .collapse-title { font-weight: 600; }
+
+/* 成绩截图样式 */
+.screenshot-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+}
+
+.screenshot-item {
+  width: 150px;
+  height: 150px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.screenshot-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.image-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background: #f5f7fa;
+  color: #909399;
+  font-size: 30px;
+}
 </style>

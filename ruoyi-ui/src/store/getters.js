@@ -11,13 +11,17 @@ const getters = {
   userId: state => state.user.id, // 添加userId getter，映射到user.id
   name: state => state.user.name,
   nickName: state => state.user.nickName,
+  deptId: state => state.user.deptId, // 添加deptId getter
+  dept: state => state.user.dept, // 添加dept getter
   userInfo: state => ({ // 添加userInfo getter，包含用户基本信息
     id: state.user.id,
     name: state.user.name,
     nickName: state.user.nickName,
     avatar: state.user.avatar,
     roles: state.user.roles,
-    permissions: state.user.permissions
+    permissions: state.user.permissions,
+    deptId: state.user.deptId,
+    dept: state.user.dept
   }),
   introduction: state => state.user.introduction,
   roles: state => state.user.roles,

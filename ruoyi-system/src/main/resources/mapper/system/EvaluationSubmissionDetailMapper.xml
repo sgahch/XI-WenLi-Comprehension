@@ -90,4 +90,25 @@
         </foreach>
     </insert>
 
+    <select id="selectBySubmissionId" parameterType="long" resultMap="EvaluationSubmissionDetailResult">
+        select
+            id,
+            submission_id,
+            rule_id,
+            rule_snapshot,
+            final_score,
+            status,
+            remark,
+            audit_time,
+            auditor_id,
+            audit_comment,
+            create_by,
+            create_time,
+            update_by,
+            update_time
+        from evaluation_submission_detail
+        where submission_id = #{submissionId}
+        order by id asc
+    </select>
+
 </mapper>

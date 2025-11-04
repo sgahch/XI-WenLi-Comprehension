@@ -32,6 +32,10 @@ public class EvaluationAuditLog extends BaseEntity
     @Excel(name = "审核人ID")
     private Long auditorId;
 
+    /** 审核人姓名（关联查询字段） */
+    @Excel(name = "审核人姓名")
+    private String auditorName;
+
     /** 操作类型：APPROVE-通过，REJECT-驳回，SUBMIT-提交 */
     @Excel(name = "操作类型")
     private String operation;
@@ -89,11 +93,20 @@ public class EvaluationAuditLog extends BaseEntity
         this.auditorId = auditorId;
     }
 
-    public Long getAuditorId() 
+    public Long getAuditorId()
     {
         return auditorId;
     }
-    public void setOperation(String operation) 
+    public void setAuditorName(String auditorName)
+    {
+        this.auditorName = auditorName;
+    }
+
+    public String getAuditorName()
+    {
+        return auditorName;
+    }
+    public void setOperation(String operation)
     {
         this.operation = operation;
     }

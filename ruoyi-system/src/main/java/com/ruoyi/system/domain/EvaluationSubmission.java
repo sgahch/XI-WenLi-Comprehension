@@ -34,6 +34,14 @@ public class EvaluationSubmission extends BaseEntity
     @Excel(name = "学生用户ID")
     private Long userId;
 
+    /** 学生姓名（关联查询字段） */
+    @Excel(name = "学生姓名")
+    private String studentName;
+
+    /** 学号（关联查询字段） */
+    @Excel(name = "学号")
+    private String studentNumber;
+
     /** 学年 */
     @Excel(name = "学年")
     private String academicYear;
@@ -45,6 +53,10 @@ public class EvaluationSubmission extends BaseEntity
     /** 班级ID */
     @Excel(name = "班级ID")
     private Long classId;
+
+    /** 班级名称（关联查询字段） */
+    @Excel(name = "班级名称")
+    private String className;
 
     /** 填报状态 */
     @Excel(name = "填报状态")
@@ -98,6 +110,9 @@ public class EvaluationSubmission extends BaseEntity
 
     /** 填报详情列表 */
     private List<EvaluationSubmissionDetail> details;
+
+    /** 成绩截图URL列表（临时字段，不映射到数据库） */
+    private List<String> gradeScreenshotUrls;
 
     @Override
     public String toString() {

@@ -10,6 +10,8 @@
         <result property="filePath" column="file_path" />
         <result property="fileSize" column="file_size" />
         <result property="fileType" column="file_type" />
+        <result property="attachmentType" column="attachment_type" />
+        <result property="url" column="url" />
         <result property="uploadTime" column="upload_time" />
         <result property="uploadBy" column="upload_by" />
         <result property="createTime" column="create_time" />
@@ -31,6 +33,7 @@
             file_path,
             file_size,
             file_type,
+            attachment_type,
             url,
             upload_time,
             upload_by,
@@ -43,6 +46,7 @@
             #{filePath},
             #{fileSize},
             #{fileType},
+            #{attachmentType},
             #{url},
             #{uploadTime},
             #{uploadBy},
@@ -59,6 +63,7 @@
             file_path,
             file_size,
             file_type,
+            attachment_type,
             url,
             upload_time,
             upload_by,
@@ -73,6 +78,7 @@
                 #{a.filePath},
                 #{a.fileSize},
                 #{a.fileType},
+                #{a.attachmentType},
                 #{a.url},
                 #{a.uploadTime},
                 #{a.uploadBy},
@@ -81,5 +87,24 @@
             )
         </foreach>
     </insert>
+
+    <select id="selectByDetailIdAndType" resultMap="EvaluationAttachmentResult">
+        select id, detail_id, file_name, original_name, file_path, file_size, file_type,
+               attachment_type, url, upload_time, upload_by, create_time, update_time
+        from evaluation_attachment
+        where detail_id = #{detailId}
+        <if test="attachmentType != null and attachmentType != ''">
+            and attachment_type = #{attachmentType}
+        </if>
+        order by upload_time desc
+    </select>
+
+    <select id="selectByDetailId" resultMap="EvaluationAttachmentResult">
+        select id, detail_id, file_name, original_name, file_path, file_size, file_type,
+               attachment_type, url, upload_time, upload_by, create_time, update_time
+        from evaluation_attachment
+        where detail_id = #{detailId}
+        order by upload_time desc
+    </select>
 
 </mapper>
