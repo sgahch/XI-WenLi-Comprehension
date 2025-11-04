@@ -11,19 +11,19 @@
       
       <el-table-column label="类别" min-width="120">
         <template slot-scope="scope">
-          {{ scope.row.ruleSnapshot && scope.row.ruleSnapshot.category || '—' }}
+          {{ getRuleSnapshotField(scope.row, 'category') }}
         </template>
       </el-table-column>
 
       <el-table-column label="项目名称" min-width="150">
         <template slot-scope="scope">
-          {{ scope.row.ruleSnapshot && scope.row.ruleSnapshot.itemName || '—' }}
+          {{ getRuleSnapshotField(scope.row, 'itemName') }}
         </template>
       </el-table-column>
 
       <el-table-column label="等级" min-width="120">
         <template slot-scope="scope">
-          {{ scope.row.ruleSnapshot && scope.row.ruleSnapshot.level || '—' }}
+          {{ getRuleSnapshotField(scope.row, 'level') }}
         </template>
       </el-table-column>
 
@@ -123,6 +123,31 @@ export default {
     }
   },
   methods: {
+    // 获取 ruleSnapshot 中的字段值
+    getRuleSnapshotField(row, fieldName) {
+      if (!row.ruleSnapshot) {
+        console.warn('[DimensionDetailViewer] ruleSnapshot 为空:', row)
+        return '—'
+      }
+
+      let snapshot = row.ruleSnapshot
+
+      // 如果是字符串，尝试解析
+      if (typeof snapshot === 'string') {
+        try {
+          snapshot = JSON.parse(snapshot)
+        } catch (e) {
+          console.error('[DimensionDetailViewer] 解析 ruleSnapshot 失败:', e, snapshot)
+          return '—'
+        }
+      }
+
+      const value = snapshot[fieldName]
+      console.log(`[DimensionDetailViewer] 获取字段 ${fieldName}:`, value, '完整snapshot:', snapshot)
+
+      return value || '—'
+    },
+
     // 获取分数标签类型
     getScoreTagType(score) {
       if (score >= 10) {

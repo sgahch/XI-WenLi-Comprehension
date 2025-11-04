@@ -378,7 +378,6 @@ export default {
 
       // 安全检查：确保 ruleOptions.intellectual 是数组
       if (!Array.isArray(this.ruleOptions.intellectual)) {
-        console.warn('[SubmissionForm] ruleOptions.intellectual 不是数组:', this.ruleOptions.intellectual)
         return flatRules
       }
 
@@ -386,21 +385,18 @@ export default {
       this.ruleOptions.intellectual.forEach(category => {
         // 安全检查：确保 category.children 存在
         if (!category || !Array.isArray(category.children)) {
-          console.warn('[SubmissionForm] category.children 不存在或不是数组:', category)
           return
         }
 
         category.children.forEach(item => {
           // 安全检查：确保 item.children 存在
           if (!item || !Array.isArray(item.children)) {
-            console.warn('[SubmissionForm] item.children 不存在或不是数组:', item)
             return
           }
 
           item.children.forEach(level => {
             // 安全检查：确保 level 和 level.ruleData 存在
             if (!level || !level.ruleData) {
-              console.warn('[SubmissionForm] level 或 level.ruleData 不存在:', level)
               return
             }
 
@@ -422,7 +418,6 @@ export default {
         })
       })
 
-      console.log('[SubmissionForm] flatIntellectualRules 生成完成，共', flatRules.length, '条规则')
       return flatRules
     }
   },
@@ -435,16 +430,14 @@ export default {
         }
       },
       immediate: true
-    }
-  },
-  created() {
-    this.initializeData()
-  },
-  watch: {
+    },
     // 监听基本信息变化，自动保存草稿
     'formData.academicYear': 'checkAndAutoSaveDraft',
     'formData.semester': 'checkAndAutoSaveDraft',
     'formData.classId': 'checkAndAutoSaveDraft'
+  },
+  created() {
+    this.initializeData()
   },
   methods: {
     // 初始化数据
@@ -519,11 +512,18 @@ export default {
     async loadRuleOptions() {
       try {
         const dimensions = ['moral', 'intellectual', 'physical', 'aesthetic', 'labor']
-        
+
         for (const dimension of dimensions) {
+          console.log(`[SubmissionForm] 加载 ${dimension} 维度规则...`)
           const response = await getRuleTree({ dimension })
+          console.log(`[SubmissionForm] ${dimension} 维度原始响应:`, response)
+
           if (response.code === 200 && response.data.length > 0) {
+            console.log(`[SubmissionForm] ${dimension} 维度原始数据:`, response.data[0])
             this.ruleOptions[dimension] = this.transformRuleData(response.data[0])
+            console.log(`[SubmissionForm] ${dimension} 维度转换后数据:`, this.ruleOptions[dimension])
+          } else {
+            console.warn(`[SubmissionForm] ${dimension} 维度没有规则数据`)
           }
         }
       } catch (error) {
@@ -540,18 +540,30 @@ export default {
         children: category.items.map(item => ({
           value: item.itemName,
           label: item.itemName,
-          children: item.levels.map(level => ({
-            value: level.id,
-            label: `${level.level} (${level.score}分)`,
-            score: level.score,
-            requireAttachment: level.requireAttachment,
-            attachmentTypes: level.attachmentTypes,
-            ruleData: level,
-            // 兼容处理：如果id是字符串则解析，如果是数字则直接使用
-            ruleId: typeof level.id === 'string'
-              ? (parseInt(level.id.split("_").pop()) || null)
-              : level.id
-          }))
+          children: item.levels.map(level => {
+            // 处理 attachmentTypes：确保它是数组
+            let attachmentTypes = level.attachmentTypes
+            if (typeof attachmentTypes === 'string') {
+              // 如果是字符串，按逗号分割
+              attachmentTypes = attachmentTypes.split(',').map(t => t.trim().toLowerCase())
+            } else if (!Array.isArray(attachmentTypes)) {
+              // 如果不是数组也不是字符串，使用默认值
+              attachmentTypes = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+            }
+
+            return {
+              value: level.id,
+              label: `${level.level} (${level.score}分)`,
+              score: level.score,
+              requireAttachment: level.requireAttachment,
+              attachmentTypes: attachmentTypes,
+              ruleData: level,
+              // 兼容处理：如果id是字符串则解析，如果是数字则直接使用
+              ruleId: typeof level.id === 'string'
+                ? (parseInt(level.id.split("_").pop()) || null)
+                : level.id
+            }
+          })
         }))
       }))
     },
@@ -720,9 +732,10 @@ export default {
         return sum + (achievement.score || 0)
       }, 0)
 
-      // 使用 Vue.set 确保响应式更新
-      this.$set(this.scoreOverview[dimension], 'score', totalScore)
-      console.log(`[SubmissionForm] 更新${dimension}维度分数: ${totalScore}`)
+      // 只在分数真正变化时才更新，避免触发不必要的响应式更新
+      if (this.scoreOverview[dimension].score !== totalScore) {
+        this.$set(this.scoreOverview[dimension], 'score', totalScore)
+      }
     },
 
     // 更新所有分数
@@ -907,26 +920,53 @@ export default {
     // 构建提交数据
     buildSubmissionData(status) {
       const details = []
-      
+
+      // 维度类型映射
+      const dimensionTypeMap = {
+        'moral': 0,        // 德育
+        'intellectual': 1, // 智育
+        'physical': 2,     // 体育
+        'aesthetic': 3,    // 美育
+        'labor': 4         // 劳育
+      }
+
       // 收集所有维度的成果数据
       Object.keys(this.achievements).forEach(dimension => {
+        const dimensionType = dimensionTypeMap[dimension]
+
         this.achievements[dimension].forEach(achievement => {
-          // 处理attachments字段：将字符串转换为对象数组
+          // 处理attachments字段：确保是对象数组格式
           let attachments = []
           if (achievement.attachments) {
             if (typeof achievement.attachments === 'string' && achievement.attachments.trim()) {
-              // 如果是字符串，按逗号分割并转换为对象数组
+              // 如果是字符串（兼容旧数据），按逗号分割并转换为对象数组
               attachments = achievement.attachments.split(',').map(url => ({
                 url: url.trim(),
-                fileName: this.getFileNameFromUrl(url.trim())
+                fileName: this.getFileNameFromUrl(url.trim()),
+                originalName: this.getFileNameFromUrl(url.trim()),
+                fileSize: 0,
+                fileType: this.getFileExtension(url.trim())
               }))
             } else if (Array.isArray(achievement.attachments)) {
               // 如果已经是数组，确保格式正确
               attachments = achievement.attachments.map(item => {
                 if (typeof item === 'string') {
+                  // 字符串URL转对象
                   return {
                     url: item,
-                    fileName: this.getFileNameFromUrl(item)
+                    fileName: this.getFileNameFromUrl(item),
+                    originalName: this.getFileNameFromUrl(item),
+                    fileSize: 0,
+                    fileType: this.getFileExtension(item)
+                  }
+                } else if (typeof item === 'object' && item !== null) {
+                  // 对象，确保包含所有必需字段
+                  return {
+                    url: item.url || '',
+                    fileName: item.fileName || item.name || this.getFileNameFromUrl(item.url || ''),
+                    originalName: item.originalName || item.name || this.getFileNameFromUrl(item.url || ''),
+                    fileSize: item.fileSize || 0,
+                    fileType: item.fileType || this.getFileExtension(item.fileName || item.name || item.url || '')
                   }
                 }
                 return item
@@ -934,29 +974,31 @@ export default {
             }
           }
 
+          // 构建 ruleSnapshot（包含维度类型和成果信息）
+          let ruleSnapshot = {
+            dimensionType: dimensionType, // 维度类型（0=德育,1=智育,2=体育,3=美育,4=劳育）
+            dimension: dimension, // 维度名称（兼容旧版本）
+            category: achievement.category || '',
+            itemName: achievement.itemName || '',
+            level: achievement.level || '',
+            score: achievement.score || 0
+          }
+
+          // 如果是课程成绩，添加额外的课程信息
+          if (achievement.category === '课程成绩' && achievement.grade !== undefined) {
+            ruleSnapshot.courseCode = achievement.courseCode || ''
+            ruleSnapshot.credit = achievement.credit || 0
+            ruleSnapshot.grade = achievement.grade // 学生的实际成绩
+            ruleSnapshot.gradePoint = achievement.gradePoint || 0
+          }
+
           // 构建详情对象
           const detail = {
             ruleId: achievement.ruleId,
+            ruleSnapshot: JSON.stringify(ruleSnapshot), // 规则快照（JSON字符串）
             finalScore: achievement.score,
             remark: achievement.remark,
             attachments: attachments
-          }
-
-          // 如果是课程成绩，需要添加自定义的 ruleSnapshot
-          if (achievement.category === '课程成绩' && achievement.grade !== undefined) {
-            // 构建包含课程成绩信息的 ruleSnapshot
-            const ruleSnapshot = {
-              dimensionType: 1, // 智育
-              category: '课程成绩',
-              itemName: achievement.itemName || achievement.courseName || '',
-              courseCode: achievement.courseCode || '',
-              credit: achievement.credit || 0,
-              grade: achievement.grade, // 学生的实际成绩
-              gradePoint: achievement.gradePoint || 0,
-              level: achievement.level || '',
-              score: achievement.score || 0
-            }
-            detail.ruleSnapshot = JSON.stringify(ruleSnapshot)
           }
 
           details.push(detail)
@@ -989,6 +1031,13 @@ export default {
       return parts[parts.length - 1] || 'unknown'
     },
 
+    // 从文件名中提取扩展名
+    getFileExtension(fileName) {
+      if (!fileName) return 'TXT'
+      const parts = fileName.split('.')
+      return parts.length > 1 ? parts[parts.length - 1].toUpperCase() : 'TXT'
+    },
+
     // 本地缓存加载草稿
     loadDraftFromLocalStorage() {
       try {
@@ -1011,7 +1060,26 @@ export default {
 
             // 恢复成果数据
             if (draftData.achievements) {
-              this.achievements = { ...this.achievements, ...draftData.achievements }
+              // 修复 attachmentTypes 类型问题
+              const fixedAchievements = {}
+              Object.keys(draftData.achievements).forEach(dimension => {
+                fixedAchievements[dimension] = draftData.achievements[dimension].map(achievement => {
+                  // 确保 attachmentTypes 是数组
+                  let attachmentTypes = achievement.attachmentTypes
+                  if (typeof attachmentTypes === 'string') {
+                    attachmentTypes = attachmentTypes.split(',').map(t => t.trim().toLowerCase())
+                  } else if (!Array.isArray(attachmentTypes)) {
+                    attachmentTypes = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+                  }
+
+                  return {
+                    ...achievement,
+                    attachmentTypes: attachmentTypes
+                  }
+                })
+              })
+
+              this.achievements = { ...this.achievements, ...fixedAchievements }
               this.updateAllScores()
             }
 

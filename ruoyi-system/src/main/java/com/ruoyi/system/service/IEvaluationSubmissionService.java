@@ -40,11 +40,11 @@ public interface IEvaluationSubmissionService
 
     /**
      * 保存或更新综测填报（智能判断insert/update）
-     * 
+     *
      * @param evaluationSubmission 综测填报
-     * @return 结果
+     * @return 保存后的对象（包含ID）
      */
-    public int saveOrUpdateEvaluationSubmission(EvaluationSubmission evaluationSubmission);
+    public EvaluationSubmission saveOrUpdateEvaluationSubmission(EvaluationSubmission evaluationSubmission);
 
     /**
      * 修改综测填报

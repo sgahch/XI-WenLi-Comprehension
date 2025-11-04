@@ -253,8 +253,20 @@ export default {
         return name
       }
     },
-    // 对象转成指定字符串分隔
+    // 对象转成指定字符串分隔或对象数组（根据value的类型决定）
     listToString(list, separator) {
+      // 如果原始value是数组，则返回对象数组
+      if (Array.isArray(this.value)) {
+        return list.map(item => ({
+          url: item.url,
+          fileName: item.name || this.getFileName(item.url),
+          originalName: item.originalName || item.name || this.getFileName(item.url),
+          fileSize: item.fileSize || 0,
+          fileType: item.fileType || this.getFileExtension(item.name || item.url)
+        }))
+      }
+
+      // 否则返回逗号分隔的URL字符串（兼容旧版本）
       let strs = ""
       separator = separator || ","
       for (let i in list) {

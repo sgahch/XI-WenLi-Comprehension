@@ -65,7 +65,8 @@ public class EvaluationSubmissionController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody EvaluationSubmission evaluationSubmission)
     {
-        return toAjax(evaluationSubmissionService.saveOrUpdateEvaluationSubmission(evaluationSubmission));
+        EvaluationSubmission result = evaluationSubmissionService.saveOrUpdateEvaluationSubmission(evaluationSubmission);
+        return success(result);
     }
 
     /**

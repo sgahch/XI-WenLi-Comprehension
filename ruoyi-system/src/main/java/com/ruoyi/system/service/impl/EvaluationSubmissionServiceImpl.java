@@ -113,20 +113,20 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
 
     /**
      * 保存或更新综测填报（智能判断insert/update）
-     * 
+     *
      * @param evaluationSubmission 综测填报
-     * @return 结果
+     * @return 保存后的对象（包含ID）
      */
     @Override
     @Transactional
-    public int saveOrUpdateEvaluationSubmission(EvaluationSubmission evaluationSubmission)
+    public EvaluationSubmission saveOrUpdateEvaluationSubmission(EvaluationSubmission evaluationSubmission)
     {
         // 从当前登录用户自动填充studentId和userId
         Long userId = SecurityUtils.getUserId();
         evaluationSubmission.setStudentId(userId);
         evaluationSubmission.setUserId(userId);
 
-        // 计算各维度分数与总分（基于 details.finalScore + 评分项目维度映射）
+        // 计算各维度分数与总分（基于 details.finalScore + 前端传来的dimensionType或从规则查询）
         if (evaluationSubmission.getDetails() != null && !evaluationSubmission.getDetails().isEmpty()) {
             java.math.BigDecimal moral = java.math.BigDecimal.ZERO;
             java.math.BigDecimal intellectual = java.math.BigDecimal.ZERO;
@@ -135,31 +135,58 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
             java.math.BigDecimal labor = java.math.BigDecimal.ZERO;
 
             for (com.ruoyi.system.domain.EvaluationSubmissionDetail d : evaluationSubmission.getDetails()) {
-                if (d == null || d.getRuleId() == null || d.getFinalScore() == null) {
+                if (d == null || d.getFinalScore() == null) {
                     continue;
                 }
-                com.ruoyi.system.domain.TEvaluationItemConfig cfg = tEvaluationItemConfigMapper.selectTEvaluationItemConfigById(d.getRuleId());
-                if (cfg == null || cfg.getDimensionType() == null) {
-                    continue;
+
+                // 优先从ruleSnapshot中获取dimensionType（前端传来的）
+                Integer dimensionType = null;
+                if (d.getRuleSnapshot() != null && !d.getRuleSnapshot().trim().isEmpty()) {
+                    try {
+                        com.alibaba.fastjson2.JSONObject snapshot = com.alibaba.fastjson2.JSON.parseObject(d.getRuleSnapshot());
+                        dimensionType = snapshot.getInteger("dimensionType");
+                    } catch (Exception e) {
+                        // 解析失败，忽略
+                    }
                 }
-                switch (cfg.getDimensionType()) {
-                    case 2: // 德育
-                        moral = moral.add(d.getFinalScore());
-                        break;
-                    case 1: // 智育
-                        intellectual = intellectual.add(d.getFinalScore());
-                        break;
-                    case 3: // 体育
-                        physical = physical.add(d.getFinalScore());
-                        break;
-                    case 4: // 美育
-                        aesthetic = aesthetic.add(d.getFinalScore());
-                        break;
-                    case 5: // 劳育
-                        labor = labor.add(d.getFinalScore());
-                        break;
-                    default:
-                        break;
+
+                // 如果ruleSnapshot中没有dimensionType，则从规则配置表查询
+                if (dimensionType == null && d.getRuleId() != null) {
+                    com.ruoyi.system.domain.TEvaluationItemConfig cfg = tEvaluationItemConfigMapper.selectTEvaluationItemConfigById(d.getRuleId());
+                    if (cfg != null && cfg.getDimensionType() != null) {
+                        // t_evaluation_item_config表中的dimensionType编码：1=智育,2=德育,3=体育,4=美育,5=劳育
+                        // 需要转换为前端编码：0=德育,1=智育,2=体育,3=美育,4=劳育
+                        switch (cfg.getDimensionType()) {
+                            case 1: dimensionType = 1; break; // 智育
+                            case 2: dimensionType = 0; break; // 德育
+                            case 3: dimensionType = 2; break; // 体育
+                            case 4: dimensionType = 3; break; // 美育
+                            case 5: dimensionType = 4; break; // 劳育
+                        }
+                    }
+                }
+
+                // 根据dimensionType累加分数（使用前端编码：0=德育,1=智育,2=体育,3=美育,4=劳育）
+                if (dimensionType != null) {
+                    switch (dimensionType) {
+                        case 0: // 德育
+                            moral = moral.add(d.getFinalScore());
+                            break;
+                        case 1: // 智育
+                            intellectual = intellectual.add(d.getFinalScore());
+                            break;
+                        case 2: // 体育
+                            physical = physical.add(d.getFinalScore());
+                            break;
+                        case 3: // 美育
+                            aesthetic = aesthetic.add(d.getFinalScore());
+                            break;
+                        case 4: // 劳育
+                            labor = labor.add(d.getFinalScore());
+                            break;
+                        default:
+                            break;
+                    }
                 }
             }
 
@@ -186,23 +213,26 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
             evaluationSubmission.setId(existingRecord.getId());
             evaluationSubmission.setUpdateTime(DateUtils.getNowDate());
             evaluationSubmission.setUpdateBy(SecurityUtils.getUsername());
-            int r = evaluationSubmissionMapper.updateEvaluationSubmission(evaluationSubmission);
+            evaluationSubmissionMapper.updateEvaluationSubmission(evaluationSubmission);
             // 同步详情与附件
             Long submissionId = existingRecord.getId();
             syncDetailsAndAttachments(submissionId, evaluationSubmission.getDetails(), evaluationSubmission.getGradeScreenshotUrls());
-            return r;
+            // 返回更新后的对象
+            return evaluationSubmission;
         } else {
             // 不存在记录，执行插入操作
             evaluationSubmission.setCreateTime(DateUtils.getNowDate());
             evaluationSubmission.setCreateBy(SecurityUtils.getUsername());
-            int r = evaluationSubmissionMapper.insertEvaluationSubmission(evaluationSubmission);
+            evaluationSubmissionMapper.insertEvaluationSubmission(evaluationSubmission);
             // 插入后根据条件再查一次以获取ID
             List<EvaluationSubmission> afterInsert = evaluationSubmissionMapper.selectEvaluationSubmissionList(queryCondition);
             if (afterInsert != null && !afterInsert.isEmpty()) {
-                Long submissionId = afterInsert.get(0).getId();
-                syncDetailsAndAttachments(submissionId, evaluationSubmission.getDetails(), evaluationSubmission.getGradeScreenshotUrls());
+                EvaluationSubmission inserted = afterInsert.get(0);
+                evaluationSubmission.setId(inserted.getId());
+                syncDetailsAndAttachments(inserted.getId(), evaluationSubmission.getDetails(), evaluationSubmission.getGradeScreenshotUrls());
             }
-            return r;
+            // 返回插入后的对象（包含ID）
+            return evaluationSubmission;
         }
     }
 

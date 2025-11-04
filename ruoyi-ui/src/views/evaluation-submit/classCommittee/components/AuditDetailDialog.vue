@@ -260,7 +260,7 @@
 <script>
 import { getSubmission, auditSubmission } from '@/api/evaluation/submission'
 import { listAuditLog } from '@/api/evaluation/auditLog'
-import { getCertificates } from '@/api/evaluation/attachment'
+import { getCertificates, getAttachmentsBySubmissionIdAndType } from '@/api/evaluation/attachment'
 import GradeScreenshotViewer from '@/components/evaluation/GradeScreenshotViewer'
 import DimensionDetailViewer from '@/components/evaluation/DimensionDetailViewer'
 
@@ -281,7 +281,8 @@ export default {
       activeDimension: 'intellectual', // 当前激活的维度，默认智育
       auditLogs: [],
       gradeDataList: [],
-      certificateList: [],
+      allCertificates: [], // 所有证明材料
+      certificateList: [], // 当前维度的证明材料
       previewDialogVisible: false,
       previewImageUrl: '',
       auditForm: {
@@ -453,18 +454,70 @@ export default {
     /** 加载证明材料 */
     async loadCertificates(submissionId) {
       try {
-        const response = await getCertificates(submissionId)
+        console.log('[班委审核] 加载证明材料, submissionId:', submissionId, '当前维度:', this.activeDimension)
+
+        // 使用 submissionId 和附件类型查询所有证明材料
+        const response = await getAttachmentsBySubmissionIdAndType(submissionId, 'CERTIFICATE')
+
         if (response.code === 200) {
-          this.certificateList = response.data || []
+          this.allCertificates = response.data || []
+          console.log('[班委审核] 获取到所有证明材料:', this.allCertificates.length, '个')
+
+          // 根据当前激活的维度过滤证明材料
+          this.certificateList = this.filterCertificatesByDimension(this.allCertificates)
+          console.log('[班委审核] 过滤后的证明材料:', this.certificateList.length, '个')
         }
       } catch (error) {
         console.error('加载证明材料失败', error)
       }
     },
+    /** 根据维度过滤证明材料 */
+    filterCertificatesByDimension(certificates) {
+      if (!this.submissionDetail.details || certificates.length === 0) {
+        return []
+      }
+
+      // 使用前端编码：0=德育,1=智育,2=体育,3=美育,4=劳育
+      const dimensionTypeMap = {
+        'moral': 0,
+        'intellectual': 1,
+        'physical': 2,
+        'aesthetic': 3,
+        'labor': 4
+      }
+
+      const targetType = dimensionTypeMap[this.activeDimension]
+
+      // 获取当前维度的所有 detailId
+      const dimensionDetailIds = this.submissionDetail.details
+        .filter(detail => {
+          if (detail.ruleSnapshot) {
+            try {
+              const snapshot = typeof detail.ruleSnapshot === 'string'
+                ? JSON.parse(detail.ruleSnapshot)
+                : detail.ruleSnapshot
+              return snapshot.dimensionType === targetType
+            } catch (e) {
+              return false
+            }
+          }
+          return false
+        })
+        .map(detail => detail.id)
+
+      console.log(`[班委审核] ${this.getDimensionName(this.activeDimension)}维度的detailIds:`, dimensionDetailIds)
+
+      // 过滤出属于当前维度的证明材料
+      return certificates.filter(cert => dimensionDetailIds.includes(cert.detailId))
+    },
     /** 切换维度 */
     switchDimension(dimension) {
       console.log('[班委审核] 切换到维度:', dimension)
       this.activeDimension = dimension
+
+      // 重新过滤证明材料
+      this.certificateList = this.filterCertificatesByDimension(this.allCertificates)
+      console.log('[班委审核] 切换维度后的证明材料:', this.certificateList.length, '个')
     },
     /** 获取维度名称 */
     getDimensionName(dimension) {
@@ -483,34 +536,55 @@ export default {
         return []
       }
 
+      // 使用前端编码：0=德育,1=智育,2=体育,3=美育,4=劳育
       const dimensionTypeMap = {
-        'moral': 2,
+        'moral': 0,
         'intellectual': 1,
-        'physical': 3,
-        'aesthetic': 4,
-        'labor': 5
+        'physical': 2,
+        'aesthetic': 3,
+        'labor': 4
       }
 
       const targetType = dimensionTypeMap[this.activeDimension]
 
       console.log(`[班委审核] 获取${this.getDimensionName(this.activeDimension)}详情, dimensionType=${targetType}`)
 
-      const details = this.submissionDetail.details.filter(detail => {
-        if (detail.ruleSnapshot) {
-          try {
-            const snapshot = typeof detail.ruleSnapshot === 'string'
-              ? JSON.parse(detail.ruleSnapshot)
-              : detail.ruleSnapshot
-            return snapshot.dimensionType === targetType
-          } catch (e) {
-            console.error('解析ruleSnapshot失败:', e)
-            return false
+      const details = this.submissionDetail.details
+        .filter(detail => {
+          if (detail.ruleSnapshot) {
+            try {
+              const snapshot = typeof detail.ruleSnapshot === 'string'
+                ? JSON.parse(detail.ruleSnapshot)
+                : detail.ruleSnapshot
+              return snapshot.dimensionType === targetType
+            } catch (e) {
+              console.error('解析ruleSnapshot失败:', e)
+              return false
+            }
           }
-        }
-        return false
-      })
+          return false
+        })
+        .map(detail => {
+          // 确保 ruleSnapshot 是对象格式，方便子组件使用
+          const parsedDetail = { ...detail }
+          if (typeof detail.ruleSnapshot === 'string') {
+            try {
+              parsedDetail.ruleSnapshot = JSON.parse(detail.ruleSnapshot)
+            } catch (e) {
+              console.error('解析ruleSnapshot失败:', e)
+              parsedDetail.ruleSnapshot = {}
+            }
+          }
+          return parsedDetail
+        })
 
       console.log(`[班委审核] 找到${details.length}条${this.getDimensionName(this.activeDimension)}详情`)
+
+      // 打印第一条详情的 ruleSnapshot，用于调试
+      if (details.length > 0) {
+        console.log('[班委审核] 第一条详情的ruleSnapshot:', details[0].ruleSnapshot)
+      }
+
       return details
     },
     /** 验证审核意见 */
@@ -564,6 +638,7 @@ export default {
       this.intellectualDetailId = null
       this.auditLogs = []
       this.gradeDataList = []
+      this.allCertificates = []
       this.certificateList = []
       this.auditForm = {
         submissionId: null,

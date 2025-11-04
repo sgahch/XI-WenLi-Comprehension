@@ -279,13 +279,25 @@ export default {
         return
       }
 
+      // 确保 courseName 存在
+      if (!row.courseName) {
+        const rule = this.ruleOptions.find(r => r.id === row.ruleId)
+        if (rule) {
+          row.courseName = rule.itemName
+          row.itemName = rule.itemName
+        }
+      }
+
       // 根据成绩匹配规则
       const matchedRule = this.findMatchingRule(row.courseName, row.grade)
       if (matchedRule) {
         row.score = matchedRule.score
         row.level = matchedRule.level
         row.ruleId = matchedRule.id // 更新为匹配的规则ID
-        console.log('[CourseGradeInput] 匹配到规则:', matchedRule)
+        // 确保 courseName 不会因为 ruleId 更新而丢失
+        row.courseName = matchedRule.itemName
+        row.itemName = matchedRule.itemName
+        console.log('[CourseGradeInput] 匹配到规则:', matchedRule, '课程名称:', row.courseName)
       } else {
         row.score = 0
         row.level = '未达标'
@@ -361,7 +373,17 @@ export default {
         return
       }
 
+      // 确保 courseName 存在
+      if (!row.courseName) {
+        const rule = this.ruleOptions.find(r => r.id === row.ruleId)
+        if (rule) {
+          row.courseName = rule.itemName
+          row.itemName = rule.itemName
+        }
+      }
+
       row.editing = false
+      console.log('[CourseGradeInput] 保存课程:', row)
       this.emitChange()
       this.$message.success('保存成功')
     },

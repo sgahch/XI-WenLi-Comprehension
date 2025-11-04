@@ -203,9 +203,9 @@ export default {
   computed: {
     // 是否可以保存
     canSave() {
-      return this.currentAchievement.selectedRule &&
-             this.currentAchievement.selectedRule.length > 0 &&
-             this.currentAchievement.score > 0
+      const hasRule = this.currentAchievement.selectedRule && this.currentAchievement.selectedRule.length > 0
+      const hasScore = this.currentAchievement.score > 0
+      return hasRule && hasScore
     }
   },
   props: {
@@ -319,16 +319,27 @@ export default {
   methods: {
     // 克隆成果数据
     cloneAchievements(achievements) {
-      return achievements.map((achievement, index) => ({
-        ...achievement,
-        key: achievement.key || `${this.dimension}_${Date.now()}_${index}`,
-        selectedRule: achievement.selectedRule || [],
-        score: achievement.score || 0,
-        remark: achievement.remark || '',
-        attachments: achievement.attachments || [],
-        requireAttachment: achievement.requireAttachment || false,
-        attachmentTypes: achievement.attachmentTypes || ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
-      }))
+      return achievements.map((achievement, index) => {
+        // 确保 attachmentTypes 是数组
+        let attachmentTypes = achievement.attachmentTypes || ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+        if (typeof attachmentTypes === 'string') {
+          attachmentTypes = attachmentTypes.split(',').map(t => t.trim().toLowerCase())
+        }
+        if (!Array.isArray(attachmentTypes)) {
+          attachmentTypes = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+        }
+
+        return {
+          ...achievement,
+          key: achievement.key || `${this.dimension}_${Date.now()}_${index}`,
+          selectedRule: achievement.selectedRule || [],
+          score: achievement.score || 0,
+          remark: achievement.remark || '',
+          attachments: achievement.attachments || [],
+          requireAttachment: achievement.requireAttachment || false,
+          attachmentTypes: attachmentTypes
+        }
+      })
     },
 
     // 显示添加表单
@@ -465,6 +476,8 @@ export default {
 
     // 处理当前成果规则选择变化
     handleCurrentRuleChange(selectedPath) {
+      console.log('[AchievementDimension] 规则选择变化, selectedPath:', selectedPath)
+
       if (!selectedPath || selectedPath.length === 0) {
         // 清空选择
         this.currentAchievement.ruleId = null
@@ -472,17 +485,15 @@ export default {
         this.currentAchievement.requireAttachment = false
         this.currentAchievement.attachmentTypes = ['PDF', 'JPG', 'PNG', 'DOC', 'DOCX']
         this.currentAchievement.ruleData = null
+        console.log('[AchievementDimension] 清空规则选择')
         return
       }
 
       // 根据选择路径找到对应的规则数据
       const ruleData = this.findRuleData(selectedPath)
+      console.log('[AchievementDimension] 找到的ruleData:', ruleData)
+
       if (ruleData) {
-        // 添加调试日志
-        console.log('原始ruleData:', ruleData)
-        console.log('ruleData.value:', ruleData.value)
-        console.log('ruleData.ruleId:', ruleData.ruleId)
-        
         // 解析ruleId
         let parsedRuleId = null
         if (ruleData.ruleId) {
@@ -491,17 +502,29 @@ export default {
           const parts = ruleData.value.split("_")
           const lastPart = parts[parts.length - 1]
           parsedRuleId = parseInt(lastPart)
-          console.log('从value解析的ruleId:', lastPart, '->', parsedRuleId)
         }
-        
+
         // 使用解析出来的数值ruleId，而不是完整的ID字符串
         this.currentAchievement.ruleId = parsedRuleId || null
-        console.log('最终设置的ruleId:', this.currentAchievement.ruleId)
-        
         this.currentAchievement.score = ruleData.score || 0
         this.currentAchievement.requireAttachment = ruleData.requireAttachment || false
-        this.currentAchievement.attachmentTypes = ruleData.attachmentTypes || ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+
+        // 确保 attachmentTypes 是数组
+        let attachmentTypes = ruleData.attachmentTypes || ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+        if (typeof attachmentTypes === 'string') {
+          attachmentTypes = attachmentTypes.split(',').map(t => t.trim().toLowerCase())
+        }
+        this.currentAchievement.attachmentTypes = Array.isArray(attachmentTypes) ? attachmentTypes : ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+
         this.currentAchievement.ruleData = ruleData.ruleData || ruleData
+
+        console.log('[AchievementDimension] 设置成果数据:')
+        console.log('  - ruleId:', this.currentAchievement.ruleId)
+        console.log('  - score:', this.currentAchievement.score)
+        console.log('  - requireAttachment:', this.currentAchievement.requireAttachment)
+        console.log('  - canSave:', this.canSave)
+      } else {
+        console.warn('[AchievementDimension] 未找到ruleData，selectedPath:', selectedPath)
       }
     },
 
@@ -556,7 +579,14 @@ export default {
          achievement.ruleId = ruleData.ruleId || parseInt(ruleData.value.split("_").pop()) || null
          achievement.score = ruleData.score || 0
          achievement.requireAttachment = ruleData.requireAttachment || false
-         achievement.attachmentTypes = ruleData.attachmentTypes || ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+
+         // 确保 attachmentTypes 是数组
+         let attachmentTypes = ruleData.attachmentTypes || ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+         if (typeof attachmentTypes === 'string') {
+           attachmentTypes = attachmentTypes.split(',').map(t => t.trim().toLowerCase())
+         }
+         achievement.attachmentTypes = Array.isArray(attachmentTypes) ? attachmentTypes : ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+
          achievement.ruleData = ruleData.ruleData || ruleData
        }
      },
@@ -587,9 +617,21 @@ export default {
 
     // 获取文件类型文本
     getFileTypeText(types) {
-      if (!types || types.length === 0) {
+      // 类型检查：确保 types 是数组
+      if (!types) {
         return 'PDF、JPG、JPEG、PNG、DOC、DOCX'
       }
+
+      // 如果 types 是字符串，先转换为数组
+      if (typeof types === 'string') {
+        types = types.split(',').map(t => t.trim())
+      }
+
+      // 如果不是数组或数组为空，返回默认值
+      if (!Array.isArray(types) || types.length === 0) {
+        return 'PDF、JPG、JPEG、PNG、DOC、DOCX'
+      }
+
       return types.map(type => type.toUpperCase()).join('、')
     },
 
@@ -654,7 +696,19 @@ export default {
 
             // 恢复表单状态，但需要验证编辑索引的有效性
             if (parsed.showForm && parsed.currentAchievement) {
-              this.currentAchievement = { ...parsed.currentAchievement }
+              // 确保 attachmentTypes 是数组
+              let attachmentTypes = parsed.currentAchievement.attachmentTypes || ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+              if (typeof attachmentTypes === 'string') {
+                attachmentTypes = attachmentTypes.split(',').map(t => t.trim().toLowerCase())
+              }
+              if (!Array.isArray(attachmentTypes)) {
+                attachmentTypes = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+              }
+
+              this.currentAchievement = {
+                ...parsed.currentAchievement,
+                attachmentTypes: attachmentTypes
+              }
               this.showForm = parsed.showForm
               this.isEditing = parsed.isEditing || false
               
