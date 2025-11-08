@@ -44,7 +44,7 @@
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="statistics-row">
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card pending">
+        <el-card shadow="hover" class="stat-card pending" :class="{ active: queryParams.status === 1 }" @click.native="handleStatCardClick(1)">
           <div class="stat-content">
             <div class="stat-icon">
               <i class="el-icon-time"></i>
@@ -57,7 +57,7 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card approved">
+        <el-card shadow="hover" class="stat-card approved" :class="{ active: queryParams.status === 2 }" @click.native="handleStatCardClick(2)">
           <div class="stat-content">
             <div class="stat-icon">
               <i class="el-icon-success"></i>
@@ -70,7 +70,7 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card rejected">
+        <el-card shadow="hover" class="stat-card rejected" :class="{ active: queryParams.status === 4 }" @click.native="handleStatCardClick(4)">
           <div class="stat-content">
             <div class="stat-icon">
               <i class="el-icon-error"></i>
@@ -83,7 +83,7 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card total">
+        <el-card shadow="hover" class="stat-card total" :class="{ active: queryParams.status === null }" @click.native="handleStatCardClick(null)">
           <div class="stat-content">
             <div class="stat-icon">
               <i class="el-icon-document"></i>
@@ -206,7 +206,7 @@
 </template>
 
 <script>
-import { listSubmission } from '@/api/evaluation/submission'
+import { listSubmission, getSubmissionStatistics } from '@/api/evaluation/submission'
 import AuditDetailDialog from './components/AuditDetailDialog'
 import BatchAuditDialog from './components/BatchAuditDialog'
 
@@ -266,14 +266,55 @@ export default {
     },
     /** 获取统计数据 */
     getStatistics() {
-      // TODO: 调用统计接口
-      // 临时模拟数据
-      this.statistics = {
-        pendingCount: 15,
-        approvedCount: 42,
-        rejectedCount: 3,
-        totalCount: 60
+      // 构建查询参数，包含当前筛选条件
+      const params = {
+        academicYear: this.queryParams.academicYear,
+        semester: this.queryParams.semester
       }
+
+      // 调用统计接口
+      getSubmissionStatistics(params).then(response => {
+        // 后端返回的数据结构：
+        // {
+        //   totalCount: 总数,
+        //   statusStats: { status: count, ... },
+        //   scoreStats: { avgMoralScore, avgIntellectualScore, ... }
+        // }
+        const data = response.data || response
+
+        // 初始化统计数据
+        this.statistics = {
+          pendingCount: 0,
+          approvedCount: 0,
+          rejectedCount: 0,
+          totalCount: data.totalCount || 0
+        }
+
+        // 解析状态统计数据
+        if (data.statusStats && Array.isArray(data.statusStats)) {
+          data.statusStats.forEach(item => {
+            if (item.status === 1) {
+              // 状态1：待班委审核
+              this.statistics.pendingCount = item.count || 0
+            } else if (item.status === 2) {
+              // 状态2：已通过（待辅导员审核）
+              this.statistics.approvedCount = item.count || 0
+            } else if (item.status === 4) {
+              // 状态4：已驳回
+              this.statistics.rejectedCount = item.count || 0
+            }
+          })
+        }
+      }).catch(error => {
+        console.error('获取统计数据失败:', error)
+        // 失败时使用默认值
+        this.statistics = {
+          pendingCount: 0,
+          approvedCount: 0,
+          rejectedCount: 0,
+          totalCount: 0
+        }
+      })
     },
     /** 初始化学年选项 */
     initAcademicYears() {
@@ -287,11 +328,13 @@ export default {
     handleQuery() {
       this.queryParams.pageNum = 1
       this.getList()
+      this.getStatistics()
     },
     /** 重置按钮操作 */
     resetQuery() {
       this.resetForm("queryForm")
       this.handleQuery()
+      // handleQuery中已经调用了getStatistics，无需重复调用
     },
     /** 多选框选中数据 */
     handleSelectionChange(selection) {
@@ -321,6 +364,15 @@ export default {
       if (score >= 70) return 'warning'
       if (score >= 60) return 'info'
       return 'danger'
+    },
+    /** 统计卡片点击事件 */
+    handleStatCardClick(status) {
+      // 更新查询参数中的状态
+      this.queryParams.status = status
+      // 重置到第一页
+      this.queryParams.pageNum = 1
+      // 刷新列表
+      this.getList()
     }
   }
 }
@@ -340,6 +392,11 @@ export default {
 
     &:hover {
       transform: translateY(-5px);
+    }
+
+    &.active {
+      border: 2px solid #409EFF;
+      box-shadow: 0 2px 12px 0 rgba(64, 158, 255, 0.3);
     }
 
     .stat-content {

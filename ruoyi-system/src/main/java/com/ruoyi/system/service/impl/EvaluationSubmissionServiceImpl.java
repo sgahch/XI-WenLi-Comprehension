@@ -307,15 +307,15 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
         // 获取总数
         int totalCount = evaluationSubmissionMapper.countSubmissions(evaluationSubmission);
         statistics.put("totalCount", totalCount);
-        
-        // 获取各状态统计
-        Map<String, Object> statusStats = evaluationSubmissionMapper.countByStatus(evaluationSubmission);
+
+        // 获取各状态统计（返回列表，每个状态一条记录）
+        List<Map<String, Object>> statusStats = evaluationSubmissionMapper.countByStatus(evaluationSubmission);
         statistics.put("statusStats", statusStats);
-        
+
         // 获取各维度平均分
         Map<String, Object> scoreStats = evaluationSubmissionMapper.getAverageScores(evaluationSubmission);
         statistics.put("scoreStats", scoreStats);
-        
+
         return statistics;
     }
 

@@ -70,11 +70,11 @@ public interface EvaluationSubmissionMapper
 
     /**
      * 按状态统计
-     * 
+     *
      * @param evaluationSubmission 查询条件
-     * @return 状态统计
+     * @return 状态统计列表
      */
-    public Map<String, Object> countByStatus(EvaluationSubmission evaluationSubmission);
+    public List<Map<String, Object>> countByStatus(EvaluationSubmission evaluationSubmission);
 
     /**
      * 获取平均分统计
