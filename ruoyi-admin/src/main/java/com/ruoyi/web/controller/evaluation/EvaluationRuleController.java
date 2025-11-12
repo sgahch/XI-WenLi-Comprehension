@@ -1,26 +1,112 @@
-package com.ruoyi.evaluation.controller;
-
-import com.ruoyi.common.core.controller.BaseController;
-import com.ruoyi.common.core.domain.AjaxResult;
-import org.apache.ibatis.session.SqlSession;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+package com.ruoyi.web.controller.evaluation;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import javax.servlet.http.HttpServletResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import com.ruoyi.common.annotation.Log;
+import com.ruoyi.common.core.controller.BaseController;
+import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.system.domain.EvaluationRule;
+import com.ruoyi.system.service.IEvaluationRuleService;
+import com.ruoyi.system.mapper.EvaluationRuleMapper;
+import com.ruoyi.common.utils.poi.ExcelUtil;
+import com.ruoyi.common.core.page.TableDataInfo;
 
 /**
- * 综合测评规则Controller
- *
+ * 计分规则Controller
+ * 
  * @author ruoyi
- * @date 2024-01-01
+ * @date 2025-11-09
  */
 @RestController
 @RequestMapping("/evaluation/rule")
 public class EvaluationRuleController extends BaseController
 {
     @Autowired
-    private SqlSession sqlSession;
+    private IEvaluationRuleService evaluationRuleService;
+
+    @Autowired
+    private EvaluationRuleMapper evaluationRuleMapper;
+
+    /**
+     * 查询计分规则列表
+     */
+    @PreAuthorize("@ss.hasPermi('evaluation:rule:list')")
+    @GetMapping("/list")
+    public TableDataInfo list(EvaluationRule evaluationRule)
+    {
+        startPage();
+        List<EvaluationRule> list = evaluationRuleService.selectEvaluationRuleList(evaluationRule);
+        return getDataTable(list);
+    }
+
+    /**
+     * 导出计分规则列表
+     */
+    @PreAuthorize("@ss.hasPermi('evaluation:rule:export')")
+    @Log(title = "计分规则", businessType = BusinessType.EXPORT)
+    @PostMapping("/export")
+    public void export(HttpServletResponse response, EvaluationRule evaluationRule)
+    {
+        List<EvaluationRule> list = evaluationRuleService.selectEvaluationRuleList(evaluationRule);
+        ExcelUtil<EvaluationRule> util = new ExcelUtil<EvaluationRule>(EvaluationRule.class);
+        util.exportExcel(response, list, "计分规则数据");
+    }
+
+    /**
+     * 获取计分规则详细信息
+     */
+    @PreAuthorize("@ss.hasPermi('evaluation:rule:query')")
+    @GetMapping(value = "/{id}")
+    public AjaxResult getInfo(@PathVariable("id") Long id)
+    {
+        return success(evaluationRuleService.selectEvaluationRuleById(id));
+    }
+
+    /**
+     * 新增计分规则
+     */
+    @PreAuthorize("@ss.hasPermi('evaluation:rule:add')")
+    @Log(title = "计分规则", businessType = BusinessType.INSERT)
+    @PostMapping
+    public AjaxResult add(@RequestBody EvaluationRule evaluationRule)
+    {
+        return toAjax(evaluationRuleService.insertEvaluationRule(evaluationRule));
+    }
+
+    /**
+     * 修改计分规则
+     */
+    @PreAuthorize("@ss.hasPermi('evaluation:rule:edit')")
+    @Log(title = "计分规则", businessType = BusinessType.UPDATE)
+    @PutMapping
+    public AjaxResult edit(@RequestBody EvaluationRule evaluationRule)
+    {
+        return toAjax(evaluationRuleService.updateEvaluationRule(evaluationRule));
+    }
+
+    /**
+     * 删除计分规则
+     */
+    @PreAuthorize("@ss.hasPermi('evaluation:rule:remove')")
+    @Log(title = "计分规则", businessType = BusinessType.DELETE)
+	@DeleteMapping("/{ids}")
+    public AjaxResult remove(@PathVariable Long[] ids)
+    {
+        return toAjax(evaluationRuleService.deleteEvaluationRuleByIds(ids));
+    }
 
     /**
      * 获取树状结构的计分规则 (用于前端级联选择器)
@@ -50,13 +136,7 @@ public class EvaluationRuleController extends BaseController
      * 从数据库查询规则
      */
     private List<Map<String, Object>> queryRulesFromDatabase(String dimension) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("dimension", dimension);
-
-        List<Map<String, Object>> results = sqlSession.selectList(
-            "com.ruoyi.evaluation.mapper.EvaluationRuleMapper.selectRulesByDimension",
-            params
-        );
+        List<Map<String, Object>> results = evaluationRuleMapper.selectRulesByDimension(dimension);
 
         logger.info("[规则查询] SQL查询结果: {} 条记录", results.size());
         for (Map<String, Object> rule : results) {

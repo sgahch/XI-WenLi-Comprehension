@@ -8,18 +8,9 @@
           <p class="subtitle">Comprehensive Assessment Submission</p>
         </div>
         <div class="action-section">
-          <el-button 
-            type="primary" 
-            icon="el-icon-document" 
-            @click="saveDraft"
-            :loading="saving"
-            :disabled="isViewMode"
-          >
-            保存草稿
-          </el-button>
-          <el-button 
-            type="success" 
-            icon="el-icon-check" 
+          <el-button
+            type="success"
+            icon="el-icon-check"
             @click="submitForAudit"
             :loading="submitting"
             :disabled="isViewMode"
@@ -240,7 +231,7 @@ import AchievementDimension from './components/AchievementDimension.vue'
 import CourseGradeInput from './components/CourseGradeInput.vue'
 import ScoreOverview from './components/ScoreOverview.vue'
 import GradeScreenshotUpload from '@/components/evaluation/GradeScreenshotUpload.vue'
-import { getRuleTree, createSubmission, updateSubmission, getSubmissionDetail } from '@/api/evaluation/submission'
+import { getRuleTree, createSubmission, updateSubmission, getSubmissionDetail, getSubmissionBySemester } from '@/api/evaluation/submission'
 import { listDept } from '@/api/system/dept'
 import { parseTime } from '@/utils/ruoyi'
 
@@ -339,11 +330,7 @@ export default {
 
       // 加载状态
       loading: false,
-      saving: false,
-      submitting: false,
-
-      // 自动保存定时器
-      autoSaveTimer: null
+      submitting: false
     }
   },
   computed: {
@@ -430,11 +417,7 @@ export default {
         }
       },
       immediate: true
-    },
-    // 监听基本信息变化，自动保存草稿
-    'formData.academicYear': 'checkAndAutoSaveDraft',
-    'formData.semester': 'checkAndAutoSaveDraft',
-    'formData.classId': 'checkAndAutoSaveDraft'
+    }
   },
   created() {
     this.initializeData()
@@ -457,14 +440,72 @@ export default {
         } else {
           // 新增模式，设置默认值
           this.setDefaultValues()
-          // 尝试加载本地草稿
-          this.loadDraftFromLocalStorage()
+          // 尝试加载该学年学期的已有记录
+          await this.loadExistingSubmission()
         }
       } catch (error) {
         console.error('初始化数据失败:', error)
         this.$message.error('初始化数据失败')
       } finally {
         this.loading = false
+      }
+    },
+
+    // 加载该学年学期的已有记录
+    async loadExistingSubmission() {
+      try {
+        console.log('[SubmissionForm] 尝试加载已有记录...', {
+          academicYear: this.formData.academicYear,
+          semester: this.formData.semester
+        })
+
+        const response = await getSubmissionBySemester(
+          this.formData.academicYear,
+          this.formData.semester
+        )
+
+        console.log('[SubmissionForm] API响应:', response)
+
+        if (response.code === 200 && response.data) {
+          const data = response.data
+
+          console.log('[SubmissionForm] 找到已有记录，加载数据...', data)
+          console.log('[SubmissionForm] details数据:', data.details)
+
+          // 设置基本信息
+          this.formData = {
+            id: data.id,
+            academicYear: data.academicYear,
+            semester: data.semester,
+            classId: data.classId,
+            status: data.status,
+            remark: data.remark || ''
+          }
+
+          console.log('[SubmissionForm] 设置后的formData:', this.formData)
+
+          // 设置submissionId（用于成绩截图上传）
+          this.submissionId = data.id
+
+          // 设置成果数据
+          if (data.details && data.details.length > 0) {
+            console.log('[SubmissionForm] 开始加载成果数据，details数量:', data.details.length)
+            this.loadAchievementsFromDetails(data.details)
+            console.log('[SubmissionForm] 加载后的achievements:', this.achievements)
+          } else {
+            console.warn('[SubmissionForm] 没有details数据')
+          }
+
+          // 更新分数总览
+          this.updateAllScores()
+
+          this.$message.success('已加载您在本学期的填报记录，可以继续修改')
+        } else {
+          console.log('[SubmissionForm] 未找到已有记录，保持空白表单', response)
+        }
+      } catch (error) {
+        console.error('[SubmissionForm] 加载已有记录失败:', error)
+        // 不显示错误提示，保持空白表单
       }
     },
 
@@ -614,16 +655,26 @@ export default {
 
     // 从详情数据加载成果
     loadAchievementsFromDetails(details) {
+      console.log('[SubmissionForm] loadAchievementsFromDetails 开始，details:', details)
+
       // 清空现有成果
       Object.keys(this.achievements).forEach(key => {
         this.achievements[key] = []
       })
 
+      console.log('[SubmissionForm] 清空后的achievements:', this.achievements)
+
       // 按维度分组详情数据
-      details.forEach(detail => {
+      details.forEach((detail, index) => {
+        console.log(`[SubmissionForm] 处理detail[${index}]:`, detail)
+        console.log(`[SubmissionForm] ruleSnapshot:`, detail.ruleSnapshot)
+
         const dimension = detail.ruleSnapshot.dimension
+        const category = detail.ruleSnapshot.category
+        console.log(`[SubmissionForm] dimension: ${dimension}, category: ${category}`)
+
         if (this.achievements[dimension]) {
-          this.achievements[dimension].push({
+          const achievement = {
             id: detail.id,
             ruleId: detail.ruleId,
             selectedRule: [
@@ -631,13 +682,33 @@ export default {
               detail.ruleSnapshot.itemName,
               detail.ruleId
             ],
+            category: category,
+            itemName: detail.ruleSnapshot.itemName,
             score: detail.finalScore,
             remark: detail.remark || '',
             attachments: detail.attachments || [],
             ruleData: detail.ruleSnapshot
-          })
+          }
+
+          // 如果是课程成绩，添加额外字段
+          if (category === '课程成绩') {
+            achievement.courseName = detail.ruleSnapshot.itemName
+            achievement.grade = detail.ruleSnapshot.grade || null
+            achievement.level = detail.ruleSnapshot.level || ''
+            achievement.courseCode = detail.ruleSnapshot.courseCode || ''
+            achievement.credit = detail.ruleSnapshot.credit || 0
+            achievement.gradePoint = detail.ruleSnapshot.gradePoint || 0
+            console.log(`[SubmissionForm] 课程成绩特殊处理:`, achievement)
+          }
+
+          console.log(`[SubmissionForm] 添加achievement到${dimension}:`, achievement)
+          this.achievements[dimension].push(achievement)
+        } else {
+          console.warn(`[SubmissionForm] 未找到维度: ${dimension}`)
         }
       })
+
+      console.log('[SubmissionForm] loadAchievementsFromDetails 完成，最终achievements:', this.achievements)
     },
 
     // 处理成果变化
@@ -745,81 +816,6 @@ export default {
       })
     },
 
-    // 检查并自动保存草稿
-    async checkAndAutoSaveDraft() {
-      // 检查基本信息是否完整
-      if (this.formData.academicYear &&
-          this.formData.semester &&
-          this.formData.classId &&
-          !this.submissionId && // 只在没有submissionId时创建
-          !this.isViewMode) { // 非查看模式
-
-        // 延迟执行，避免频繁调用
-        if (this.autoSaveTimer) {
-          clearTimeout(this.autoSaveTimer)
-        }
-
-        this.autoSaveTimer = setTimeout(() => {
-          this.autoSaveDraft()
-        }, 1000) // 1秒后执行
-      }
-    },
-
-    // 自动保存草稿到后端
-    async autoSaveDraft() {
-      try {
-        console.log('开始自动保存草稿...')
-
-        const submissionData = this.buildSubmissionData(0) // 0-草稿状态
-
-        const response = await createSubmission(submissionData)
-
-        if (response.code === 200 && response.data && response.data.id) {
-          this.submissionId = response.data.id
-          this.formData.id = response.data.id
-
-          this.$message.success('基本信息已自动保存')
-          console.log('自动保存草稿成功，submissionId:', this.submissionId)
-        }
-      } catch (error) {
-        console.error('自动保存草稿失败:', error)
-        // 不显示错误提示，避免打扰用户
-      }
-    },
-
-    // 保存草稿到本地缓存（保留原有功能）
-    async saveDraft() {
-      if (!await this.validateForm()) {
-        return
-      }
-
-      this.saving = true
-      try {
-        const submissionData = this.buildSubmissionData(0) // 0-草稿状态
-
-        // 生成草稿缓存key（加入用户维度，避免跨账号污染）
-        const userKey = (this.$store && this.$store.getters) ? (this.$store.getters.userId || this.$store.getters.name || 'anon') : 'anon'
-        const draftKey = `evaluationSubmissionDraft_${userKey}_${this.formData.academicYear}_${this.formData.semester}_${this.formData.classId || 'new'}`
-
-        // 保存草稿数据到本地缓存
-        const draftData = {
-          ...submissionData,
-          timestamp: Date.now(),
-          achievements: this.achievements // 保存成果数据
-        }
-
-        this.$cache.local.setJSON(draftKey, draftData)
-        this.$message.success('草稿已保存到本地')
-
-        console.log('草稿保存成功:', draftKey)
-      } catch (error) {
-        console.error('保存草稿失败:', error)
-        this.$message.error('保存草稿失败')
-      } finally {
-        this.saving = false
-      }
-    },
-
     // 提交审核
     async submitForAudit() {
       if (!await this.validateForm()) {
@@ -852,21 +848,7 @@ export default {
           } else {
             console.warn('响应数据中缺少id字段:', response)
           }
-          
-          // 提交成功后清除本地草稿（父组件与子组件）
-          this.clearDraftFromLocalStorage()
-          const childRefs = ['moralDimension','intellectualDimension','physicalDimension','aestheticDimension','laborDimension']
-          childRefs.forEach(refName => {
-            const child = this.$refs[refName]
-            if (child && typeof child.clearDraftFromLocalStorage === 'function') {
-              try {
-                child.clearDraftFromLocalStorage()
-              } catch (e) {
-                console.warn(`清理子组件草稿失败: ${refName}`, e)
-              }
-            }
-          })
-          
+
           this.$emit('submit-success', response.data || {})
         } else {
           this.$message.error(response.msg || '提交失败')
@@ -1036,76 +1018,6 @@ export default {
       if (!fileName) return 'TXT'
       const parts = fileName.split('.')
       return parts.length > 1 ? parts[parts.length - 1].toUpperCase() : 'TXT'
-    },
-
-    // 本地缓存加载草稿
-    loadDraftFromLocalStorage() {
-      try {
-        const userKey = (this.$store && this.$store.getters) ? (this.$store.getters.userId || this.$store.getters.name || 'anon') : 'anon'
-        const draftKey = `evaluationSubmissionDraft_${userKey}_${this.formData.academicYear}_${this.formData.semester}_${this.formData.classId || 'new'}`
-        const draftData = this.$cache.local.getJSON(draftKey)
-
-        if (draftData) {
-          // 检查草稿是否过期（3天），无时间戳视为过期
-          const THREE_DAYS = 3 * 24 * 60 * 60 * 1000
-          const timestamp = draftData.timestamp || 0
-          const isExpired = Date.now() - timestamp > THREE_DAYS
-
-          if (!isExpired) {
-            // 恢复表单数据
-            if (draftData.academicYear) this.formData.academicYear = draftData.academicYear
-            if (draftData.semester) this.formData.semester = draftData.semester
-            if (draftData.classId) this.formData.classId = draftData.classId
-            if (draftData.remark) this.formData.remark = draftData.remark
-
-            // 恢复成果数据
-            if (draftData.achievements) {
-              // 修复 attachmentTypes 类型问题
-              const fixedAchievements = {}
-              Object.keys(draftData.achievements).forEach(dimension => {
-                fixedAchievements[dimension] = draftData.achievements[dimension].map(achievement => {
-                  // 确保 attachmentTypes 是数组
-                  let attachmentTypes = achievement.attachmentTypes
-                  if (typeof attachmentTypes === 'string') {
-                    attachmentTypes = attachmentTypes.split(',').map(t => t.trim().toLowerCase())
-                  } else if (!Array.isArray(attachmentTypes)) {
-                    attachmentTypes = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
-                  }
-
-                  return {
-                    ...achievement,
-                    attachmentTypes: attachmentTypes
-                  }
-                })
-              })
-
-              this.achievements = { ...this.achievements, ...fixedAchievements }
-              this.updateAllScores()
-            }
-
-            this.$message.success('已恢复本地草稿数据')
-            console.log('草稿加载成功:', draftKey)
-          } else {
-            // 清除过期草稿（3天）
-            this.$cache.local.remove(draftKey)
-            console.log('草稿已过期（超过3天），已清除:', draftKey)
-          }
-        }
-      } catch (error) {
-        console.warn('加载草稿失败:', error)
-      }
-    },
-
-    // 清除本地草稿
-    clearDraftFromLocalStorage() {
-      try {
-        const userKey = (this.$store && this.$store.getters) ? (this.$store.getters.userId || this.$store.getters.name || 'anon') : 'anon'
-        const draftKey = `evaluationSubmissionDraft_${userKey}_${this.formData.academicYear}_${this.formData.semester}_${this.formData.classId || 'new'}`
-        this.$cache.local.remove(draftKey)
-        console.log('草稿已清除:', draftKey)
-      } catch (error) {
-        console.warn('清除草稿失败:', error)
-      }
     }
   }
 }

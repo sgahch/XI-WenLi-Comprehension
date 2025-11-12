@@ -4,6 +4,10 @@ import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.TSemesterScoreDetail;
+import com.ruoyi.system.domain.TUserProfile;
+import com.ruoyi.system.mapper.SysUserMapper;
+import com.ruoyi.system.mapper.TUserProfileMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -12,13 +16,18 @@ import java.util.stream.Collectors;
 
 /**
  * 综测权限服务实现类
- * 
+ *
  * @author ruoyi
  * @date 2024-12-19
  */
 @Service
 public class EvaluationPermissionService
 {
+    @Autowired
+    private SysUserMapper sysUserMapper;
+
+    @Autowired
+    private TUserProfileMapper userProfileMapper;
     /**
      * 检查用户是否有综测学生权限
      */
@@ -183,21 +192,67 @@ public class EvaluationPermissionService
 
     /**
      * 检查教师是否可以查看指定学生数据
-     * 
+     *
      * @param studentId 学生ID
      * @return 是否有权限
      */
     private boolean canTeacherViewStudent(String studentId)
     {
-        // TODO: 实现教师班级权限检查逻辑
-        // 这里需要根据具体的班级管理逻辑来实现
-        // 例如：检查教师是否是该学生所在班级的班主任或任课教师
-        
         SysUser currentUser = SecurityUtils.getLoginUser().getUser();
-        
-        // 示例逻辑：通过部门ID判断是否同一班级
-        // 实际实现时需要根据具体的班级管理表结构来查询
-        return true; // 临时返回true，实际需要实现具体逻辑
+        if (currentUser == null || currentUser.getDeptId() == null)
+        {
+            return false;
+        }
+
+        // 方案1: 通过sys_user表的dept_id判断（假设学生的dept_id对应其班级）
+        // 先尝试通过userName查询学生用户
+        SysUser studentUser = sysUserMapper.selectUserByUserName(studentId);
+        if (studentUser != null && studentUser.getDeptId() != null)
+        {
+            // 教师和学生在同一部门（班级），则有权限
+            if (currentUser.getDeptId().equals(studentUser.getDeptId()))
+            {
+                return true;
+            }
+        }
+
+        // 方案2: 如果方案1未匹配，尝试通过userId查询
+        try
+        {
+            Long studentUserId = Long.parseLong(studentId);
+            studentUser = sysUserMapper.selectUserById(studentUserId);
+            if (studentUser != null && studentUser.getDeptId() != null)
+            {
+                if (currentUser.getDeptId().equals(studentUser.getDeptId()))
+                {
+                    return true;
+                }
+            }
+        }
+        catch (NumberFormatException e)
+        {
+            // studentId不是数字，忽略此方案
+        }
+
+        // 方案3: 通过t_user_profile表的className判断（如果教师的部门名称与学生的班级名称匹配）
+        TUserProfile profile = new TUserProfile();
+        profile.setStudentId(studentId);
+        List<TUserProfile> profiles = userProfileMapper.selectTUserProfileList(profile);
+        if (profiles != null && !profiles.isEmpty())
+        {
+            String studentClassName = profiles.get(0).getClassName();
+            if (StringUtils.isNotEmpty(studentClassName) && currentUser.getDept() != null)
+            {
+                // 如果教师的部门名称与学生的班级名称匹配
+                if (studentClassName.equals(currentUser.getDept().getDeptName()))
+                {
+                    return true;
+                }
+            }
+        }
+
+        // 默认不允许访问
+        return false;
     }
 
     /**
@@ -240,14 +295,24 @@ public class EvaluationPermissionService
                     .append(tableAlias).append(".student_id = '").append(String.valueOf(currentUser.getUserId())).append("')");
         }
 
-        // 教师只能查看本班级数据（实际实现需替换为真实的班级权限）
-        if (isEvaluationTeacher())
+        // 教师只能查看本班级数据
+        if (isEvaluationTeacher() && currentUser != null)
         {
-            // TODO: 根据教师所管理的班级生成条件
-            // 示例：AND t.class_id IN (SELECT class_id FROM teacher_class WHERE teacher_id = 'xxx')
-            condition.append(" OR ").append(tableAlias).append(".class_id IN (")
-                    .append("SELECT class_id FROM teacher_class WHERE teacher_id = '")
-                    .append(currentUser != null ? currentUser.getUserName() : "").append("')");
+            // 方案1: 基于教师的dept_id，查看同一部门（班级）的学生数据
+            // 假设学生数据表中有class_id字段，且class_id对应sys_user的dept_id
+            if (currentUser.getDeptId() != null)
+            {
+                // 允许查看class_id与教师dept_id匹配的数据
+                condition.append(" OR ").append(tableAlias).append(".class_id = '")
+                        .append(currentUser.getDeptId()).append("'");
+
+                // 同时支持通过class_name匹配（如果教师的部门名称对应班级名称）
+                if (currentUser.getDept() != null && StringUtils.isNotEmpty(currentUser.getDept().getDeptName()))
+                {
+                    condition.append(" OR ").append(tableAlias).append(".class_name = '")
+                            .append(currentUser.getDept().getDeptName()).append("'");
+                }
+            }
         }
 
         return condition.toString();

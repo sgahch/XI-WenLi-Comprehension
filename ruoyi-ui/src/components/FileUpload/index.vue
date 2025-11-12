@@ -246,6 +246,10 @@ export default {
     },
     // 获取文件名称
     getFileName(name) {
+      // 空值检查
+      if (!name) {
+        return '未命名文件'
+      }
       // 如果是url那么取最后的名字 如果不是直接返回
       if (name.lastIndexOf("/") > -1) {
         return name.slice(name.lastIndexOf("/") + 1)
@@ -289,7 +293,10 @@ export default {
     },
     // 获取文件扩展名
     getFileExtension(fileName) {
-      if (!fileName) return 'TXT'
+      // 空值检查
+      if (!fileName || typeof fileName !== 'string') {
+        return 'TXT'
+      }
       const lastDotIndex = fileName.lastIndexOf('.')
       if (lastDotIndex === -1) return 'TXT'
       return fileName.substring(lastDotIndex + 1).toUpperCase()

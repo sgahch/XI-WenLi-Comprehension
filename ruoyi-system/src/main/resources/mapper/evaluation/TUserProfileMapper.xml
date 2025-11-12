@@ -12,6 +12,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="major"    column="major"    />
         <result property="grade"    column="grade"    />
         <result property="className"    column="class_name"    />
+        <result property="deptId"    column="dept_id"    />
         <result property="gender"    column="gender"    />
         <result property="birthDate"    column="birth_date"    />
         <result property="politicalStatus"    column="political_status"    />
@@ -26,7 +27,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectTUserProfileVo">
-        select id, user_id, student_id, college, major, grade, class_name, gender, birth_date, political_status, enrollment_date, dormitory, home_address, emergency_contact, emergency_phone, status, create_time, update_time from t_user_profile
+        select id, user_id, student_id, college, major, grade, class_name, dept_id, gender, birth_date, political_status, enrollment_date, dormitory, home_address, emergency_contact, emergency_phone, status, create_time, update_time from t_user_profile
     </sql>
 
     <select id="selectTUserProfileList" parameterType="TUserProfile" resultMap="TUserProfileResult">
@@ -38,6 +39,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="major != null  and major != ''"> and major = #{major}</if>
             <if test="grade != null  and grade != ''"> and grade = #{grade}</if>
             <if test="className != null  and className != ''"> and class_name like concat('%', #{className}, '%')</if>
+            <if test="deptId != null "> and dept_id = #{deptId}</if>
             <if test="gender != null "> and gender = #{gender}</if>
             <if test="birthDate != null "> and birth_date = #{birthDate}</if>
             <if test="politicalStatus != null  and politicalStatus != ''"> and political_status = #{politicalStatus}</if>
@@ -57,6 +59,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where id = #{id}
     </select>
 
+    <select id="selectTUserProfileByUserId" parameterType="Long" resultMap="TUserProfileResult">
+        <include refid="selectTUserProfileVo"/>
+        where user_id = #{userId}
+    </select>
+
     <insert id="insertTUserProfile" parameterType="TUserProfile" useGeneratedKeys="true" keyProperty="id">
         insert into t_user_profile
         <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -66,6 +73,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="major != null">major,</if>
             <if test="grade != null">grade,</if>
             <if test="className != null">class_name,</if>
+            <if test="deptId != null">dept_id,</if>
             <if test="gender != null">gender,</if>
             <if test="birthDate != null">birth_date,</if>
             <if test="politicalStatus != null">political_status,</if>
@@ -85,6 +93,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="major != null">#{major},</if>
             <if test="grade != null">#{grade},</if>
             <if test="className != null">#{className},</if>
+            <if test="deptId != null">#{deptId},</if>
             <if test="gender != null">#{gender},</if>
             <if test="birthDate != null">#{birthDate},</if>
             <if test="politicalStatus != null">#{politicalStatus},</if>
@@ -108,6 +117,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="major != null">major = #{major},</if>
             <if test="grade != null">grade = #{grade},</if>
             <if test="className != null">class_name = #{className},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
             <if test="gender != null">gender = #{gender},</if>
             <if test="birthDate != null">birth_date = #{birthDate},</if>
             <if test="politicalStatus != null">political_status = #{politicalStatus},</if>

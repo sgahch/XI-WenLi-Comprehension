@@ -23,11 +23,14 @@ import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.system.domain.SysPost;
 import com.ruoyi.system.domain.SysUserPost;
 import com.ruoyi.system.domain.SysUserRole;
+import com.ruoyi.system.domain.TUserProfile;
+import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.system.mapper.SysPostMapper;
 import com.ruoyi.system.mapper.SysRoleMapper;
 import com.ruoyi.system.mapper.SysUserMapper;
 import com.ruoyi.system.mapper.SysUserPostMapper;
 import com.ruoyi.system.mapper.SysUserRoleMapper;
+import com.ruoyi.system.mapper.TUserProfileMapper;
 import com.ruoyi.system.service.ISysConfigService;
 import com.ruoyi.system.service.ISysDeptService;
 import com.ruoyi.system.service.ISysUserService;
@@ -62,6 +65,9 @@ public class SysUserServiceImpl implements ISysUserService
 
     @Autowired
     private ISysDeptService deptService;
+
+    @Autowired
+    private TUserProfileMapper tUserProfileMapper;
 
     @Autowired
     protected Validator validator;
@@ -521,6 +527,20 @@ public class SysUserServiceImpl implements ISysUserService
                     user.setPassword(SecurityUtils.encryptPassword(password));
                     user.setCreateBy(operName);
                     userMapper.insertUser(user);
+
+                    // 自动创建学生档案（仅针对学生角色，角色ID=100）
+                    if (user.getRoleIds() != null && user.getRoleIds().length > 0)
+                    {
+                        for (Long roleId : user.getRoleIds())
+                        {
+                            if (roleId == 100L) // 学生角色
+                            {
+                                createUserProfile(user);
+                                break;
+                            }
+                        }
+                    }
+
                     successNum++;
                     successMsg.append("<br/>" + successNum + "、账号 " + user.getUserName() + " 导入成功");
                 }
@@ -561,5 +581,101 @@ public class SysUserServiceImpl implements ISysUserService
             successMsg.insert(0, "恭喜您，数据已全部导入成功！共 " + successNum + " 条，数据如下：");
         }
         return successMsg.toString();
+    }
+
+    /**
+     * 自动创建学生档案
+     *
+     * @param user 用户信息
+     */
+    private void createUserProfile(SysUser user)
+    {
+        try
+        {
+            // 检查是否已存在档案
+            TUserProfile existProfile = new TUserProfile();
+            existProfile.setUserId(user.getUserId());
+            List<TUserProfile> profiles = tUserProfileMapper.selectTUserProfileList(existProfile);
+            if (profiles != null && !profiles.isEmpty())
+            {
+                log.info("用户 {} 的档案已存在，跳过创建", user.getUserName());
+                return;
+            }
+
+            // 获取部门信息以填充学院、专业、班级
+            SysDept dept = deptService.selectDeptById(user.getDeptId());
+            if (dept == null)
+            {
+                log.warn("用户 {} 的部门ID {} 不存在，无法创建档案", user.getUserName(), user.getDeptId());
+                return;
+            }
+
+            // 创建学生档案
+            TUserProfile profile = new TUserProfile();
+            profile.setUserId(user.getUserId());
+            profile.setStudentId(user.getUserName()); // 学号即用户名
+            profile.setDeptId(user.getDeptId()); // 关联班级ID
+
+            // 解析部门层级结构填充学院、专业、班级信息
+            String[] ancestors = dept.getAncestors().split(",");
+            if (ancestors.length >= 2)
+            {
+                // ancestors格式: "0,100,101" -> [0, 100, 101]
+                // 100是学院, 101是专业, dept本身是班级
+                try
+                {
+                    Long collegeId = Long.parseLong(ancestors[1]); // 学院ID
+                    SysDept college = deptService.selectDeptById(collegeId);
+                    if (college != null)
+                    {
+                        profile.setCollege(college.getDeptName());
+                    }
+
+                    if (ancestors.length >= 3)
+                    {
+                        Long majorId = Long.parseLong(ancestors[2]); // 专业ID
+                        SysDept major = deptService.selectDeptById(majorId);
+                        if (major != null)
+                        {
+                            profile.setMajor(major.getDeptName());
+                        }
+                    }
+                }
+                catch (NumberFormatException e)
+                {
+                    log.warn("解析部门层级失败: {}", dept.getAncestors(), e);
+                }
+            }
+
+            profile.setClassName(dept.getDeptName()); // 班级名称
+
+            // 从学号推断年级（假设学号前4位是入学年份，如2507240101 -> 2025级）
+            if (user.getUserName().length() >= 4)
+            {
+                String yearStr = user.getUserName().substring(0, 4);
+                profile.setGrade(yearStr + "级");
+            }
+
+            // 设置性别（从SysUser的sex字段转换）
+            if (StringUtils.isNotEmpty(user.getSex()))
+            {
+                profile.setGender(Long.parseLong(user.getSex()));
+            }
+            else
+            {
+                profile.setGender(2L); // 默认未知
+            }
+
+            profile.setStatus(1L); // 启用状态
+            profile.setCreateBy(user.getCreateBy());
+
+            tUserProfileMapper.insertTUserProfile(profile);
+            log.info("成功为用户 {} 创建学生档案", user.getUserName());
+        }
+        catch (Exception e)
+        {
+            log.error("为用户 {} 创建学生档案失败: {}", user.getUserName(), e.getMessage(), e);
+            // 不抛出异常，避免影响用户导入
+        }
     }
 }

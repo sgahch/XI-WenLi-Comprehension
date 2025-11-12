@@ -99,31 +99,55 @@ public interface TSemesterScoreDetailMapper
 
     /**
      * 获取班级成绩统计
-     * 
-     * @param classId 班级ID
+     *
+     * @param className 班级名称
      * @param academicYear 学年
      * @param semester 学期
      * @return 统计数据
      */
-    public Map<String, Object> getClassScoreStatistics(@Param("classId") String classId, 
-                                                      @Param("academicYear") String academicYear, 
+    public Map<String, Object> getClassScoreStatistics(@Param("className") String className,
+                                                      @Param("academicYear") String academicYear,
                                                       @Param("semester") String semester);
 
     /**
      * 获取专业成绩统计
-     * 
-     * @param majorId 专业ID
+     *
+     * @param majorName 专业名称
      * @param academicYear 学年
      * @param semester 学期
      * @return 统计数据
      */
-    public Map<String, Object> getMajorScoreStatistics(@Param("majorId") String majorId, 
-                                                       @Param("academicYear") String academicYear, 
+    public Map<String, Object> getMajorScoreStatistics(@Param("majorName") String majorName,
+                                                       @Param("academicYear") String academicYear,
                                                        @Param("semester") String semester);
 
     /**
+     * 获取班级排行榜
+     *
+     * @param className 班级名称
+     * @param academicYear 学年
+     * @param semester 学期
+     * @return 排行榜列表
+     */
+    public List<TSemesterScoreDetail> getClassRanking(@Param("className") String className,
+                                                      @Param("academicYear") String academicYear,
+                                                      @Param("semester") String semester);
+
+    /**
+     * 获取专业排行榜
+     *
+     * @param majorName 专业名称
+     * @param academicYear 学年
+     * @param semester 学期
+     * @return 排行榜列表
+     */
+    public List<TSemesterScoreDetail> getMajorRanking(@Param("majorName") String majorName,
+                                                      @Param("academicYear") String academicYear,
+                                                      @Param("semester") String semester);
+
+    /**
      * 新增学期成绩明细
-     * 
+     *
      * @param tSemesterScoreDetail 学期成绩明细
      * @return 结果
      */

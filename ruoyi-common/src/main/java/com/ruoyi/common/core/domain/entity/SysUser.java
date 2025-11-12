@@ -26,15 +26,15 @@ public class SysUser extends BaseEntity
     private Long userId;
 
     /** 部门ID */
-    @Excel(name = "部门编号", type = Type.IMPORT)
+    @Excel(name = "部门编号", type = Type.IMPORT, prompt = "学生填写班级ID(500-999)，教职工填写学院/专业ID(100-499)")
     private Long deptId;
 
     /** 用户账号 */
-    @Excel(name = "登录名称")
+    @Excel(name = "登录名称", prompt = "学生填写学号(如2507240101)，教职工填写工号(如T20240001)")
     private String userName;
 
     /** 用户昵称 */
-    @Excel(name = "用户名称")
+    @Excel(name = "用户名称", prompt = "学生或教职工的真实姓名")
     private String nickName;
 
     /** 用户邮箱 */

@@ -103,6 +103,28 @@ public class TSemesterScoreDetailController extends BaseController
     }
 
     /**
+     * 获取班级排行榜
+     */
+    @PreAuthorize("@ss.hasPermi('evaluation:semesterScore:list')")
+    @GetMapping("/classRanking")
+    public AjaxResult getClassRanking(@RequestParam String className, @RequestParam String academicYear, @RequestParam String semester)
+    {
+        List<TSemesterScoreDetail> ranking = tSemesterScoreDetailService.getClassRanking(className, academicYear, semester);
+        return success(ranking);
+    }
+
+    /**
+     * 获取专业排行榜
+     */
+    @PreAuthorize("@ss.hasPermi('evaluation:semesterScore:list')")
+    @GetMapping("/majorRanking")
+    public AjaxResult getMajorRanking(@RequestParam String majorName, @RequestParam String academicYear, @RequestParam String semester)
+    {
+        List<TSemesterScoreDetail> ranking = tSemesterScoreDetailService.getMajorRanking(majorName, academicYear, semester);
+        return success(ranking);
+    }
+
+    /**
      * 计算班级排名
      */
     @PreAuthorize("@ss.hasPermi('evaluation:semesterScore:edit')")

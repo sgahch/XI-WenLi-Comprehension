@@ -90,27 +90,47 @@ public interface ITSemesterScoreDetailService
 
     /**
      * 获取班级成绩统计
-     * 
-     * @param classId 班级ID
+     *
+     * @param className 班级名称
      * @param academicYear 学年
      * @param semester 学期
      * @return 统计数据
      */
-    public Map<String, Object> getClassScoreStatistics(String classId, String academicYear, String semester);
+    public Map<String, Object> getClassScoreStatistics(String className, String academicYear, String semester);
 
     /**
      * 获取专业成绩统计
-     * 
-     * @param majorId 专业ID
+     *
+     * @param majorName 专业名称
      * @param academicYear 学年
      * @param semester 学期
      * @return 统计数据
      */
-    public Map<String, Object> getMajorScoreStatistics(String majorId, String academicYear, String semester);
+    public Map<String, Object> getMajorScoreStatistics(String majorName, String academicYear, String semester);
+
+    /**
+     * 获取班级排行榜
+     *
+     * @param className 班级名称
+     * @param academicYear 学年
+     * @param semester 学期
+     * @return 排行榜列表
+     */
+    public List<TSemesterScoreDetail> getClassRanking(String className, String academicYear, String semester);
+
+    /**
+     * 获取专业排行榜
+     *
+     * @param majorName 专业名称
+     * @param academicYear 学年
+     * @param semester 学期
+     * @return 排行榜列表
+     */
+    public List<TSemesterScoreDetail> getMajorRanking(String majorName, String academicYear, String semester);
 
     /**
      * 计算综合成绩
-     * 
+     *
      * @param tSemesterScoreDetail 成绩明细
      * @return 计算后的综合成绩
      */

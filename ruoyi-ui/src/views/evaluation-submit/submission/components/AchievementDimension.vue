@@ -485,9 +485,18 @@ export default {
         this.currentAchievement.requireAttachment = false
         this.currentAchievement.attachmentTypes = ['PDF', 'JPG', 'PNG', 'DOC', 'DOCX']
         this.currentAchievement.ruleData = null
+        this.currentAchievement.category = ''
+        this.currentAchievement.itemName = ''
+        this.currentAchievement.level = ''
         console.log('[AchievementDimension] 清空规则选择')
         return
       }
+
+      // 从 selectedPath 提取 category 和 itemName
+      const category = selectedPath[0] || ''
+      const itemName = selectedPath[1] || ''
+      console.log('[AchievementDimension] 提取的 category:', category)
+      console.log('[AchievementDimension] 提取的 itemName:', itemName)
 
       // 根据选择路径找到对应的规则数据
       const ruleData = this.findRuleData(selectedPath)
@@ -518,10 +527,17 @@ export default {
 
         this.currentAchievement.ruleData = ruleData.ruleData || ruleData
 
+        // 🔥 关键修复：保存 category 和 itemName
+        this.currentAchievement.category = category
+        this.currentAchievement.itemName = itemName
+        this.currentAchievement.level = ruleData.ruleData?.level || ruleData.label || ''
+
         console.log('[AchievementDimension] 设置成果数据:')
         console.log('  - ruleId:', this.currentAchievement.ruleId)
         console.log('  - score:', this.currentAchievement.score)
         console.log('  - requireAttachment:', this.currentAchievement.requireAttachment)
+        console.log('  - category:', this.currentAchievement.category)
+        console.log('  - itemName:', this.currentAchievement.itemName)
         console.log('  - canSave:', this.canSave)
       } else {
         console.warn('[AchievementDimension] 未找到ruleData，selectedPath:', selectedPath)
@@ -569,11 +585,26 @@ export default {
          achievement.requireAttachment = false
          achievement.attachmentTypes = ['PDF', 'JPG', 'PNG', 'DOC', 'DOCX']
          achievement.ruleData = null
+         achievement.category = ''
+         achievement.itemName = ''
+         achievement.level = ''
          return
        }
 
+       console.log('[AchievementDimension] handleRuleChange - selectedPath:', selectedPath)
+
+       // 从 selectedPath 提取 category 和 itemName
+       // selectedPath 格式: [category, itemName, ruleId]
+       const category = selectedPath[0] || ''
+       const itemName = selectedPath[1] || ''
+
+       console.log('[AchievementDimension] 提取的 category:', category)
+       console.log('[AchievementDimension] 提取的 itemName:', itemName)
+
        // 根据选择路径找到对应的规则数据
        const ruleData = this.findRuleData(selectedPath)
+       console.log('[AchievementDimension] 找到的 ruleData:', ruleData)
+
        if (ruleData) {
          // 使用解析出来的数值ruleId，而不是完整的ID字符串
          achievement.ruleId = ruleData.ruleId || parseInt(ruleData.value.split("_").pop()) || null
@@ -588,6 +619,13 @@ export default {
          achievement.attachmentTypes = Array.isArray(attachmentTypes) ? attachmentTypes : ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
 
          achievement.ruleData = ruleData.ruleData || ruleData
+
+         // 🔥 关键修复：保存 category 和 itemName
+         achievement.category = category
+         achievement.itemName = itemName
+         achievement.level = ruleData.ruleData?.level || ruleData.label || ''
+
+         console.log('[AchievementDimension] 最终的 achievement 对象:', achievement)
        }
      },
 

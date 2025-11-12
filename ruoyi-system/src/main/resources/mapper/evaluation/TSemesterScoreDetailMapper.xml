@@ -119,4 +119,90 @@
     <foreach collection="array" item="id" separator="," open="(" close=")">#{id}</foreach>
   </delete>
 
+  <!-- 获取班级成绩统计 -->
+  <select id="getClassScoreStatistics" resultType="map">
+    SELECT
+      COUNT(*) as totalCount,
+      COUNT(CASE WHEN status = 2 THEN 1 END) as approvedCount,
+      AVG(total_score) as avgScore,
+      MAX(total_score) as maxScore,
+      MIN(total_score) as minScore,
+      AVG(intellectual_score) as avgIntellectualScore,
+      AVG(moral_score) as avgMoralScore,
+      AVG(physical_score) as avgPhysicalScore,
+      AVG(aesthetic_score) as avgAestheticScore,
+      AVG(labor_score) as avgLaborScore
+    FROM t_semester_score_detail
+    WHERE class_name = #{className}
+      AND academic_year = #{academicYear}
+      AND semester = #{semester}
+  </select>
+
+  <!-- 获取专业成绩统计 -->
+  <select id="getMajorScoreStatistics" resultType="map">
+    SELECT
+      COUNT(*) as totalCount,
+      COUNT(CASE WHEN status = 2 THEN 1 END) as approvedCount,
+      AVG(total_score) as avgScore,
+      MAX(total_score) as maxScore,
+      MIN(total_score) as minScore,
+      AVG(intellectual_score) as avgIntellectualScore,
+      AVG(moral_score) as avgMoralScore,
+      AVG(physical_score) as avgPhysicalScore,
+      AVG(aesthetic_score) as avgAestheticScore,
+      AVG(labor_score) as avgLaborScore
+    FROM t_semester_score_detail
+    WHERE major_name = #{majorName}
+      AND academic_year = #{academicYear}
+      AND semester = #{semester}
+  </select>
+
+  <!-- 获取班级排行榜 -->
+  <select id="getClassRanking" resultType="com.ruoyi.system.domain.TSemesterScoreDetail">
+    SELECT
+      student_id,
+      student_name,
+      class_name,
+      major_name,
+      total_score,
+      intellectual_score,
+      moral_score,
+      physical_score,
+      aesthetic_score,
+      labor_score,
+      class_rank,
+      major_rank,
+      status
+    FROM t_semester_score_detail
+    WHERE class_name = #{className}
+      AND academic_year = #{academicYear}
+      AND semester = #{semester}
+      AND status = 2
+    ORDER BY class_rank ASC, total_score DESC
+  </select>
+
+  <!-- 获取专业排行榜 -->
+  <select id="getMajorRanking" resultType="com.ruoyi.system.domain.TSemesterScoreDetail">
+    SELECT
+      student_id,
+      student_name,
+      class_name,
+      major_name,
+      total_score,
+      intellectual_score,
+      moral_score,
+      physical_score,
+      aesthetic_score,
+      labor_score,
+      class_rank,
+      major_rank,
+      status
+    FROM t_semester_score_detail
+    WHERE major_name = #{majorName}
+      AND academic_year = #{academicYear}
+      AND semester = #{semester}
+      AND status = 2
+    ORDER BY major_rank ASC, total_score DESC
+  </select>
+
 </mapper>

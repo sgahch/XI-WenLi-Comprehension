@@ -23,6 +23,8 @@ import com.ruoyi.system.domain.dto.BatchAuditRequest;
 import com.ruoyi.system.service.IEvaluationSubmissionService;
 import com.ruoyi.system.service.IEvaluationAuditLogService;
 import com.ruoyi.system.service.SubmissionStateMachine;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 
 /**
  * 综测填报Service业务层处理
@@ -82,7 +84,7 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
 
     /**
      * 查询综测填报列表
-     * 
+     *
      * @param evaluationSubmission 综测填报
      * @return 综测填报
      */
@@ -90,6 +92,57 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
     public List<EvaluationSubmission> selectEvaluationSubmissionList(EvaluationSubmission evaluationSubmission)
     {
         return evaluationSubmissionMapper.selectEvaluationSubmissionList(evaluationSubmission);
+    }
+
+    /**
+     * 根据角色查询综测填报列表（自动过滤状态）
+     * 班委：查询 status=1（待班委审核）
+     * 辅导员：查询 status=2（待辅导员审核）
+     * 管理员：查询所有状态
+     *
+     * @param evaluationSubmission 综测填报
+     * @return 综测填报
+     */
+    @Override
+    public List<EvaluationSubmission> selectEvaluationSubmissionListByRole(EvaluationSubmission evaluationSubmission)
+    {
+        try {
+            // 获取当前用户的角色ID列表
+            List<Long> roleIds = SecurityUtils.getLoginUser().getUser().getRoles()
+                    .stream()
+                    .map(role -> role.getRoleId())
+                    .collect(Collectors.toList());
+
+            // 管理员（role_id=1）：不过滤状态，查询所有
+            if (roleIds.contains(1L)) {
+                return evaluationSubmissionMapper.selectEvaluationSubmissionList(evaluationSubmission);
+            }
+
+            // 班委（role_id=101）：只查询 status=1（待班委审核）
+            if (roleIds.contains(101L)) {
+                // 如果用户没有指定status，则默认查询待班委审核的记录
+                if (evaluationSubmission.getStatus() == null) {
+                    evaluationSubmission.setStatus(SubmissionStatusConstants.PENDING_MONITOR_AUDIT);
+                }
+                return evaluationSubmissionMapper.selectEvaluationSubmissionList(evaluationSubmission);
+            }
+
+            // 辅导员（role_id=102）：只查询 status=2（待辅导员审核）
+            if (roleIds.contains(102L)) {
+                // 如果用户没有指定status，则默认查询待辅导员审核的记录
+                if (evaluationSubmission.getStatus() == null) {
+                    evaluationSubmission.setStatus(SubmissionStatusConstants.PENDING_COUNSELOR_AUDIT);
+                }
+                return evaluationSubmissionMapper.selectEvaluationSubmissionList(evaluationSubmission);
+            }
+
+            // 其他角色：返回空列表
+            return new ArrayList<>();
+
+        } catch (Exception e) {
+            // 如果获取角色失败，返回空列表
+            return new ArrayList<>();
+        }
     }
 
     /**
@@ -279,7 +332,7 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
 
     /**
      * 查询学生填报历史
-     * 
+     *
      * @param evaluationSubmission 查询条件
      * @return 填报历史列表
      */
@@ -290,7 +343,90 @@ public class EvaluationSubmissionServiceImpl implements IEvaluationSubmissionSer
         if (evaluationSubmission.getUserId() == null) {
             evaluationSubmission.setUserId(SecurityUtils.getUserId());
         }
-        return evaluationSubmissionMapper.selectEvaluationSubmissionList(evaluationSubmission);
+
+        // 查询填报列表
+        List<EvaluationSubmission> submissions = evaluationSubmissionMapper.selectEvaluationSubmissionList(evaluationSubmission);
+
+        // 为每条记录加载详情和附件数据
+        if (submissions != null && !submissions.isEmpty()) {
+            for (EvaluationSubmission submission : submissions) {
+                // 加载详情列表
+                java.util.List<com.ruoyi.system.domain.EvaluationSubmissionDetail> details =
+                    evaluationSubmissionDetailMapper.selectBySubmissionId(submission.getId());
+
+                // 为每个详情加载附件
+                if (details != null && !details.isEmpty()) {
+                    for (com.ruoyi.system.domain.EvaluationSubmissionDetail detail : details) {
+                        java.util.List<com.ruoyi.system.domain.EvaluationAttachment> attachments =
+                            evaluationAttachmentMapper.selectByDetailId(detail.getId());
+                        detail.setAttachments(attachments);
+                    }
+                }
+
+                submission.setDetails(details);
+            }
+        }
+
+        return submissions;
+    }
+
+    /**
+     * 查询学生在指定学年学期的提交记录
+     *
+     * @param userId 用户ID
+     * @param academicYear 学年
+     * @param semester 学期
+     * @return 提交记录，如果不存在则返回null
+     */
+    @Override
+    public EvaluationSubmission selectByUserAndSemester(Long userId, String academicYear, Integer semester)
+    {
+        EvaluationSubmission query = new EvaluationSubmission();
+        query.setUserId(userId);
+        query.setAcademicYear(academicYear);
+        query.setSemester(semester);
+
+        List<EvaluationSubmission> list = evaluationSubmissionMapper.selectEvaluationSubmissionList(query);
+
+        if (list != null && !list.isEmpty()) {
+            EvaluationSubmission submission = list.get(0);
+
+            // 加载详情列表
+            java.util.List<com.ruoyi.system.domain.EvaluationSubmissionDetail> details =
+                evaluationSubmissionDetailMapper.selectBySubmissionId(submission.getId());
+
+            // 为每个详情加载附件，并解析ruleSnapshot JSON字符串
+            if (details != null && !list.isEmpty()) {
+                for (com.ruoyi.system.domain.EvaluationSubmissionDetail detail : details) {
+                    // 加载附件
+                    java.util.List<com.ruoyi.system.domain.EvaluationAttachment> attachments =
+                        evaluationAttachmentMapper.selectByDetailId(detail.getId());
+                    detail.setAttachments(attachments);
+
+                    // 解析ruleSnapshot JSON字符串为JSONObject
+                    // 前端期望ruleSnapshot是一个对象，而不是字符串
+                    if (detail.getRuleSnapshot() != null && !detail.getRuleSnapshot().isEmpty()) {
+                        try {
+                            // 将JSON字符串解析为JSONObject
+                            JSONObject ruleSnapshotObj = JSON.parseObject(detail.getRuleSnapshot());
+                            // 将JSONObject设置回detail（这里需要修改实体类的getter/setter）
+                            // 由于实体类的ruleSnapshot是String类型，我们需要在这里做一个转换
+                            // 实际上，我们需要修改实体类，添加一个transient字段来存储解析后的对象
+                            detail.setRuleSnapshotObj(ruleSnapshotObj);
+                        } catch (Exception e) {
+                            // 解析失败，保持原样
+                            System.err.println("解析ruleSnapshot失败: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+
+            submission.setDetails(details);
+
+            return submission;
+        }
+
+        return null;
     }
 
     /**

@@ -264,8 +264,8 @@ export default {
         updateSupport: 0,
         // 设置上传的请求头部
         headers: { Authorization: "Bearer " + getToken() },
-        // 上传的地址
-        url: process.env.VUE_APP_BASE_API + "/system/user/importData"
+        // 上传的地址（使用学生批量导入接口，支持学生、班委、辅导员混合导入）
+        url: process.env.VUE_APP_BASE_API + "/evaluation/t_user_profile/importStudents"
       },
       // 查询参数
       queryParams: {
@@ -524,13 +524,13 @@ export default {
     },
     /** 导入按钮操作 */
     handleImport() {
-      this.upload.title = "用户导入"
+      this.upload.title = "用户批量导入（支持学生、班委、辅导员）"
       this.upload.open = true
     },
     /** 下载模板操作 */
     importTemplate() {
-      this.download('system/user/importTemplate', {
-      }, `user_template_${new Date().getTime()}.xlsx`)
+      this.download('evaluation/t_user_profile/importTemplate', {
+      }, `student_import_template_${new Date().getTime()}.xlsx`)
     },
     // 文件上传中处理
     handleFileUploadProgress(event, file, fileList) {

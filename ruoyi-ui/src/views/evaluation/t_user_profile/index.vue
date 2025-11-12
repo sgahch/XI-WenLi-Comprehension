@@ -240,17 +240,26 @@
         <el-form-item label="学号" prop="studentId">
           <el-input v-model="form.studentId" placeholder="请输入学号" />
         </el-form-item>
+        <el-form-item label="所属班级" prop="deptId">
+          <treeselect
+            v-model="form.deptId"
+            :options="deptOptions"
+            :show-count="true"
+            placeholder="请选择所属班级（将自动填充学院、专业、班级信息）"
+            @input="handleDeptChange"
+          />
+        </el-form-item>
         <el-form-item label="学院名称" prop="college">
-          <el-input v-model="form.college" placeholder="请输入学院名称" />
+          <el-input v-model="form.college" placeholder="自动填充" disabled />
         </el-form-item>
         <el-form-item label="专业" prop="major">
-          <el-input v-model="form.major" placeholder="请输入专业" />
+          <el-input v-model="form.major" placeholder="自动填充" disabled />
         </el-form-item>
         <el-form-item label="年级" prop="grade">
-          <el-input v-model="form.grade" placeholder="请输入年级" />
+          <el-input v-model="form.grade" placeholder="请输入年级（如2024级）" />
         </el-form-item>
         <el-form-item label="班级名称" prop="className">
-          <el-input v-model="form.className" placeholder="请输入班级名称" />
+          <el-input v-model="form.className" placeholder="自动填充" disabled />
         </el-form-item>
         <el-form-item label="性别" prop="gender">
           <el-select v-model="form.gender" placeholder="请选择性别" clearable>
@@ -299,11 +308,17 @@
 
 <script>
 import { listT_user_profile, getT_user_profile, delT_user_profile, addT_user_profile, updateT_user_profile } from "@/api/evaluation/t_user_profile"
+import { deptTreeSelect } from "@/api/system/user"
+import Treeselect from "@riophae/vue-treeselect"
+import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 
 export default {
   name: "T_user_profile",
+  components: { Treeselect },
   data() {
     return {
+      // 部门树选项
+      deptOptions: undefined,
       // 遮罩层
       loading: true,
       // 选中数组
@@ -359,6 +374,7 @@ export default {
   },
   created() {
     this.getList()  // 这是 Vue 的一个生命周期钩子。它会在页面刚刚被创建好、但还没显示出来的时候自动执行一次
+    this.getDeptTree()  // 获取部门树数据
   },
   methods: {
     /** 查询学生档案管理列表 */
@@ -381,6 +397,7 @@ export default {
         id: null,
         userId: null,
         studentId: null,
+        deptId: null,
         college: null,
         major: null,
         grade: null,
@@ -466,6 +483,64 @@ export default {
       this.download('evaluation/t_user_profile/export', {
         ...this.queryParams
       }, `t_user_profile_${new Date().getTime()}.xlsx`)
+    },
+    /** 查询部门下拉树结构 */
+    getDeptTree() {
+      deptTreeSelect().then(response => {
+        this.deptOptions = response.data
+      })
+    },
+    /** 部门选择变化时自动填充学院、专业、班级 */
+    handleDeptChange(value) {
+      if (!value) {
+        this.form.college = null
+        this.form.major = null
+        this.form.className = null
+        return
+      }
+
+      // 递归查找选中的部门节点
+      const findDept = (depts, id) => {
+        for (let dept of depts) {
+          if (dept.id === id) {
+            return dept
+          }
+          if (dept.children && dept.children.length > 0) {
+            const found = findDept(dept.children, id)
+            if (found) return found
+          }
+        }
+        return null
+      }
+
+      const selectedDept = findDept(this.deptOptions, value)
+      if (!selectedDept) return
+
+      // 设置班级名称
+      this.form.className = selectedDept.label
+
+      // 解析ancestors获取学院和专业
+      // ancestors格式: "0,100,101" -> [0, 100, 101]
+      // 100是学院, 101是专业, selectedDept本身是班级
+      if (selectedDept.ancestors) {
+        const ancestorIds = selectedDept.ancestors.split(',').filter(id => id !== '0')
+
+        if (ancestorIds.length >= 1) {
+          // 查找学院（第一级）
+          const collegeDept = findDept(this.deptOptions, parseInt(ancestorIds[0]))
+          if (collegeDept) {
+            this.form.college = collegeDept.label
+          }
+        }
+
+        if (ancestorIds.length >= 2) {
+          // 查找专业（第二级）
+          const majorDept = findDept(this.deptOptions, parseInt(ancestorIds[1]))
+          if (majorDept) {
+            this.form.major = majorDept.label
+          }
+        }
+      }
     }
   }
 }

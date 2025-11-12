@@ -8,6 +8,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.ruoyi.common.annotation.Excel;
 import com.ruoyi.common.core.domain.BaseEntity;
+import com.alibaba.fastjson2.JSONObject;
 
 /**
  * 综测填报详情对象 evaluation_submission_detail
@@ -30,9 +31,12 @@ public class EvaluationSubmissionDetail extends BaseEntity
     @Excel(name = "规则ID")
     private Long ruleId;
 
-    /** 规则快照 */
+    /** 规则快照（JSON字符串，存储到数据库） */
     @Excel(name = "规则快照")
     private String ruleSnapshot;
+
+    /** 规则快照对象（用于前端，不存储到数据库，仅在查询时使用） */
+    private transient JSONObject ruleSnapshotObj;
 
     /** 申请分数 */
     @Excel(name = "申请分数")
@@ -98,11 +102,20 @@ public class EvaluationSubmissionDetail extends BaseEntity
         this.ruleSnapshot = ruleSnapshot;
     }
 
-    public String getRuleSnapshot() 
+    public String getRuleSnapshot()
     {
         return ruleSnapshot;
     }
-    public void setApplyScore(BigDecimal applyScore) 
+    public void setRuleSnapshotObj(JSONObject ruleSnapshotObj)
+    {
+        this.ruleSnapshotObj = ruleSnapshotObj;
+    }
+
+    public JSONObject getRuleSnapshotObj()
+    {
+        return ruleSnapshotObj;
+    }
+    public void setApplyScore(BigDecimal applyScore)
     {
         this.applyScore = applyScore;
     }

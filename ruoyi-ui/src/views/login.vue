@@ -11,6 +11,10 @@
         >
           <svg-icon slot="prefix" icon-class="user" class="el-input__icon input-icon" />
         </el-input>
+        <div class="login-tip">
+          <i class="el-icon-info"></i>
+          <span>学生请输入学号，教职工请输入工号</span>
+        </div>
       </el-form-item>
       <el-form-item prop="password">
         <el-input
@@ -190,9 +194,15 @@ export default {
   }
 }
 .login-tip {
-  font-size: 13px;
-  text-align: center;
-  color: #bfbfbf;
+  font-size: 12px;
+  text-align: left;
+  color: #909399;
+  margin-top: 5px;
+  padding-left: 5px;
+  i {
+    margin-right: 5px;
+    font-size: 14px;
+  }
 }
 .login-code {
   width: 33%;

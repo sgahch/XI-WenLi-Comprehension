@@ -76,7 +76,7 @@ export function getStudentScoreTrend(params) {
 
 /**
  * 【修正】获取班级成绩统计
- * @param {object} query - { classId, timeRange }
+ * @param {object} query - { className, academicYear, semester }
  */
 export function getClassScoreStatistics(query) {
   return request({
@@ -88,11 +88,35 @@ export function getClassScoreStatistics(query) {
 
 /**
  * 【修正】获取专业成绩统计
- * @param {object} query - { majorId, timeRange }
+ * @param {object} query - { majorName, academicYear, semester }
  */
 export function getMajorScoreStatistics(query) {
   return request({
     url: '/evaluation/semesterScore/majorStatistics',
+    method: 'get',
+    params: query
+  })
+}
+
+/**
+ * 获取班级排行榜
+ * @param {object} query - { className, academicYear, semester }
+ */
+export function getClassRanking(query) {
+  return request({
+    url: '/evaluation/semesterScore/classRanking',
+    method: 'get',
+    params: query
+  })
+}
+
+/**
+ * 获取专业排行榜
+ * @param {object} query - { majorName, academicYear, semester }
+ */
+export function getMajorRanking(query) {
+  return request({
+    url: '/evaluation/semesterScore/majorRanking',
     method: 'get',
     params: query
   })

@@ -24,11 +24,22 @@ public interface IEvaluationSubmissionService
 
     /**
      * 查询综测填报列表
-     * 
+     *
      * @param evaluationSubmission 综测填报
      * @return 综测填报集合
      */
     public List<EvaluationSubmission> selectEvaluationSubmissionList(EvaluationSubmission evaluationSubmission);
+
+    /**
+     * 根据角色查询综测填报列表（自动过滤状态）
+     * 班委：查询 status=1（待班委审核）
+     * 辅导员：查询 status=2（待辅导员审核）
+     * 管理员：查询所有状态
+     *
+     * @param evaluationSubmission 综测填报
+     * @return 综测填报集合
+     */
+    public List<EvaluationSubmission> selectEvaluationSubmissionListByRole(EvaluationSubmission evaluationSubmission);
 
     /**
      * 新增综测填报
@@ -96,9 +107,19 @@ public interface IEvaluationSubmissionService
 
     /**
      * 批量审核操作
-     * 
+     *
      * @param batchAuditRequest 批量审核请求
      * @return 批量审核结果
      */
     public Map<String, Object> batchAuditSubmission(BatchAuditRequest batchAuditRequest);
+
+    /**
+     * 查询学生在指定学年学期的提交记录
+     *
+     * @param userId 用户ID
+     * @param academicYear 学年
+     * @param semester 学期
+     * @return 提交记录，如果不存在则返回null
+     */
+    public EvaluationSubmission selectByUserAndSemester(Long userId, String academicYear, Integer semester);
 }

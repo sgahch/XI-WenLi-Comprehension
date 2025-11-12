@@ -1,5 +1,11 @@
 <template>
   <div class="app-container">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <h2>{{ pageTitle }}</h2>
+      <p class="page-description">{{ pageDescription }}</p>
+    </div>
+
     <el-card class="filter-card" shadow="never">
       <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" label-width="80px">
         <el-form-item label="学年" prop="academicYear">
@@ -20,9 +26,31 @@
         </el-form-item>
         <el-form-item label="审核状态" prop="status">
           <el-select v-model="queryParams.status" placeholder="请选择状态" clearable style="width: 150px">
-            <el-option label="待班委审核" :value="1" />
-            <el-option label="已通过" :value="2" />
-            <el-option label="已驳回" :value="4" />
+            <!-- 班委看到的选项 -->
+            <template v-if="currentRole === 'monitor'">
+              <el-option label="待班委审核" :value="1" />
+              <el-option label="已通过" :value="2" />
+              <el-option label="已驳回" :value="4" />
+            </template>
+            <!-- 辅导员看到的选项 -->
+            <template v-else-if="currentRole === 'counselor'">
+              <el-option label="待辅导员审核" :value="2" />
+              <el-option label="已通过" :value="3" />
+              <el-option label="已驳回" :value="4" />
+            </template>
+            <!-- 管理员看到所有选项 -->
+            <template v-else-if="currentRole === 'admin'">
+              <el-option label="待班委审核" :value="1" />
+              <el-option label="待辅导员审核" :value="2" />
+              <el-option label="已通过" :value="3" />
+              <el-option label="已驳回" :value="4" />
+            </template>
+            <!-- 默认选项 -->
+            <template v-else>
+              <el-option label="待审核" :value="1" />
+              <el-option label="已通过" :value="3" />
+              <el-option label="已驳回" :value="4" />
+            </template>
           </el-select>
         </el-form-item>
         <el-form-item label="学生姓名" prop="studentName">
@@ -44,14 +72,14 @@
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="statistics-row">
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card pending" :class="{ active: queryParams.status === 1 }" @click.native="handleStatCardClick(1)">
+        <el-card shadow="hover" class="stat-card pending" :class="{ active: queryParams.status === getPendingStatus() }" @click.native="handleStatCardClick(getPendingStatus())">
           <div class="stat-content">
             <div class="stat-icon">
               <i class="el-icon-time"></i>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ statistics.pendingCount }}</div>
-              <div class="stat-label">待审核</div>
+              <div class="stat-label">{{ getPendingLabel() }}</div>
             </div>
           </div>
         </el-card>
@@ -169,8 +197,32 @@
             >
               查看详情
             </el-button>
+
+            <!-- 班委：只能审核 status=1 -->
             <el-button
-              v-if="scope.row.status === 1"
+              v-if="currentRole === 'monitor' && scope.row.status === 1"
+              size="mini"
+              type="text"
+              icon="el-icon-edit"
+              @click="handleAudit(scope.row)"
+            >
+              审核
+            </el-button>
+
+            <!-- 辅导员：只能审核 status=2 -->
+            <el-button
+              v-if="currentRole === 'counselor' && scope.row.status === 2"
+              size="mini"
+              type="text"
+              icon="el-icon-edit"
+              @click="handleAudit(scope.row)"
+            >
+              审核
+            </el-button>
+
+            <!-- 管理员：可以审核 status=1 或 status=2 -->
+            <el-button
+              v-if="currentRole === 'admin' && (scope.row.status === 1 || scope.row.status === 2)"
               size="mini"
               type="text"
               icon="el-icon-edit"
@@ -219,6 +271,12 @@ export default {
   },
   data() {
     return {
+      // 当前用户角色
+      currentRole: null,
+      // 页面标题
+      pageTitle: '审核管理',
+      // 页面描述
+      pageDescription: '',
       // 遮罩层
       loading: true,
       // 选中数组
@@ -235,7 +293,7 @@ export default {
         pageSize: 10,
         academicYear: null,
         semester: null,
-        status: 1, // 默认查询待班委审核的记录
+        status: null, // 不设置默认值，由后端根据角色自动过滤
         studentName: null
       },
       // 学年选项
@@ -250,11 +308,52 @@ export default {
     }
   },
   created() {
+    this.initializeRole()
     this.initAcademicYears()
     this.getList()
     this.getStatistics()
   },
   methods: {
+    /** 初始化角色 */
+    initializeRole() {
+      const roles = this.$store.getters.roles
+      console.log('[ClassCommitteeAudit] 当前用户角色:', roles)
+
+      if (roles.includes('admin')) {
+        this.currentRole = 'admin'
+        this.pageTitle = '班委审核管理'
+        this.pageDescription = '管理员可以查看和审核所有状态的记录'
+      } else if (roles.includes('counselor')) {
+        this.currentRole = 'counselor'
+        this.pageTitle = '辅导员审核'
+        this.pageDescription = '审核班委已通过的学生填报记录'
+      } else if (roles.includes('monitor')) {
+        this.currentRole = 'monitor'
+        this.pageTitle = '班委审核'
+        this.pageDescription = '审核本班学生的综合测评填报'
+      } else {
+        this.currentRole = 'unknown'
+        this.pageTitle = '审核管理'
+        this.pageDescription = ''
+      }
+
+      console.log('[ClassCommitteeAudit] 当前角色:', this.currentRole)
+    },
+
+    /** 获取待审核状态值 */
+    getPendingStatus() {
+      if (this.currentRole === 'monitor') return 1  // 待班委审核
+      if (this.currentRole === 'counselor') return 2  // 待辅导员审核
+      return 1
+    },
+
+    /** 获取待审核标签 */
+    getPendingLabel() {
+      if (this.currentRole === 'monitor') return '待班委审核'
+      if (this.currentRole === 'counselor') return '待辅导员审核'
+      return '待审核'
+    },
+
     /** 查询提交列表 */
     getList() {
       this.loading = true
@@ -379,6 +478,23 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.page-header {
+  margin-bottom: 20px;
+
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #303133;
+    margin: 0 0 8px 0;
+  }
+
+  .page-description {
+    font-size: 14px;
+    color: #909399;
+    margin: 0;
+  }
+}
+
 .filter-card {
   margin-bottom: 20px;
 }

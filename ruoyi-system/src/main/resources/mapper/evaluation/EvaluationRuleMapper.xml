@@ -2,27 +2,149 @@
 <!DOCTYPE mapper
 PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.ruoyi.evaluation.mapper.EvaluationRuleMapper">
+<mapper namespace="com.ruoyi.system.mapper.EvaluationRuleMapper">
+    
+    <resultMap type="EvaluationRule" id="EvaluationRuleResult">
+        <result property="id"    column="id"    />
+        <result property="dimension"    column="dimension"    />
+        <result property="collegeId"    column="college_id"    />
+        <result property="category"    column="category"    />
+        <result property="itemName"    column="item_name"    />
+        <result property="level"    column="level"    />
+        <result property="courseCode"    column="course_code"    />
+        <result property="credit"    column="credit"    />
+        <result property="gradePoint"    column="grade_point"    />
+        <result property="score"    column="score"    />
+        <result property="requireAttachment"    column="require_attachment"    />
+        <result property="attachmentTypes"    column="attachment_types"    />
+        <result property="description"    column="description"    />
+        <result property="isEnabled"    column="is_enabled"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
 
-    <!-- 根据维度查询规则列表 -->
-    <select id="selectRulesByDimension" parameterType="map" resultType="map">
-        SELECT 
+    <sql id="selectEvaluationRuleVo">
+        select id, dimension, college_id, category, item_name, level, course_code, credit, grade_point, score, require_attachment, attachment_types, description, is_enabled, create_by, create_time, update_by, update_time from evaluation_rule
+    </sql>
+
+    <select id="selectEvaluationRuleList" parameterType="EvaluationRule" resultMap="EvaluationRuleResult">
+        <include refid="selectEvaluationRuleVo"/>
+        <where>  
+            <if test="dimension != null  and dimension != ''"> and dimension = #{dimension}</if>
+            <if test="collegeId != null "> and college_id = #{collegeId}</if>
+            <if test="category != null  and category != ''"> and category = #{category}</if>
+            <if test="itemName != null  and itemName != ''"> and item_name like concat('%', #{itemName}, '%')</if>
+            <if test="level != null  and level != ''"> and level = #{level}</if>
+            <if test="courseCode != null  and courseCode != ''"> and course_code = #{courseCode}</if>
+            <if test="credit != null "> and credit = #{credit}</if>
+            <if test="gradePoint != null "> and grade_point = #{gradePoint}</if>
+            <if test="score != null "> and score = #{score}</if>
+            <if test="requireAttachment != null "> and require_attachment = #{requireAttachment}</if>
+            <if test="attachmentTypes != null  and attachmentTypes != ''"> and attachment_types = #{attachmentTypes}</if>
+            <if test="description != null  and description != ''"> and description = #{description}</if>
+            <if test="isEnabled != null "> and is_enabled = #{isEnabled}</if>
+        </where>
+    </select>
+    
+    <select id="selectEvaluationRuleById" parameterType="Long" resultMap="EvaluationRuleResult">
+        <include refid="selectEvaluationRuleVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertEvaluationRule" parameterType="EvaluationRule" useGeneratedKeys="true" keyProperty="id">
+        insert into evaluation_rule
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="dimension != null and dimension != ''">dimension,</if>
+            <if test="collegeId != null">college_id,</if>
+            <if test="category != null and category != ''">category,</if>
+            <if test="itemName != null and itemName != ''">item_name,</if>
+            <if test="level != null and level != ''">level,</if>
+            <if test="courseCode != null">course_code,</if>
+            <if test="credit != null">credit,</if>
+            <if test="gradePoint != null">grade_point,</if>
+            <if test="score != null">score,</if>
+            <if test="requireAttachment != null">require_attachment,</if>
+            <if test="attachmentTypes != null">attachment_types,</if>
+            <if test="description != null">description,</if>
+            <if test="isEnabled != null">is_enabled,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="dimension != null and dimension != ''">#{dimension},</if>
+            <if test="collegeId != null">#{collegeId},</if>
+            <if test="category != null and category != ''">#{category},</if>
+            <if test="itemName != null and itemName != ''">#{itemName},</if>
+            <if test="level != null and level != ''">#{level},</if>
+            <if test="courseCode != null">#{courseCode},</if>
+            <if test="credit != null">#{credit},</if>
+            <if test="gradePoint != null">#{gradePoint},</if>
+            <if test="score != null">#{score},</if>
+            <if test="requireAttachment != null">#{requireAttachment},</if>
+            <if test="attachmentTypes != null">#{attachmentTypes},</if>
+            <if test="description != null">#{description},</if>
+            <if test="isEnabled != null">#{isEnabled},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateEvaluationRule" parameterType="EvaluationRule">
+        update evaluation_rule
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="dimension != null and dimension != ''">dimension = #{dimension},</if>
+            <if test="collegeId != null">college_id = #{collegeId},</if>
+            <if test="category != null and category != ''">category = #{category},</if>
+            <if test="itemName != null and itemName != ''">item_name = #{itemName},</if>
+            <if test="level != null and level != ''">level = #{level},</if>
+            <if test="courseCode != null">course_code = #{courseCode},</if>
+            <if test="credit != null">credit = #{credit},</if>
+            <if test="gradePoint != null">grade_point = #{gradePoint},</if>
+            <if test="score != null">score = #{score},</if>
+            <if test="requireAttachment != null">require_attachment = #{requireAttachment},</if>
+            <if test="attachmentTypes != null">attachment_types = #{attachmentTypes},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteEvaluationRuleById" parameterType="Long">
+        delete from evaluation_rule where id = #{id}
+    </delete>
+
+    <delete id="deleteEvaluationRuleByIds" parameterType="String">
+        delete from evaluation_rule where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <!-- 根据维度查询规则列表（用于前端级联选择器） -->
+    <select id="selectRulesByDimension" resultType="map">
+        SELECT
             id,
             dimension,
-            college_id,
             category,
             item_name,
             level,
             score,
             description,
             require_attachment,
-            attachment_types,
-            is_enabled
+            attachment_types
         FROM evaluation_rule
         WHERE dimension = #{dimension}
           AND is_enabled = 1
-        ORDER BY category, item_name, score DESC
+        ORDER BY category, item_name, level
     </select>
-
 </mapper>
-

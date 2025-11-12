@@ -55,9 +55,17 @@ public interface TUserProfileMapper
 
     /**
      * 批量删除学生档案管理
-     * 
+     *
      * @param ids 需要删除的数据主键集合
      * @return 结果
      */
     public int deleteTUserProfileByIds(Long[] ids);
+
+    /**
+     * 根据用户ID查询学生档案
+     *
+     * @param userId 用户ID
+     * @return 学生档案
+     */
+    public TUserProfile selectTUserProfileByUserId(Long userId);
 }

@@ -88,6 +88,15 @@ export function getSubmissionHistory(params) {
   })
 }
 
+// 查询学生在指定学年学期的提交记录
+export function getSubmissionBySemester(academicYear, semester) {
+  return request({
+    url: '/evaluation/submission/semester',
+    method: 'get',
+    params: { academicYear, semester }
+  })
+}
+
 // 删除填报（草稿状态）
 export function deleteSubmission(id) {
   return request({

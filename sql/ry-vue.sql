@@ -86,64 +86,101 @@ INSERT INTO `evaluation_audit_log` VALUES (4, 2, NULL, 1, 'APPROVE', 1, 2, '', '
 INSERT INTO `evaluation_audit_log` VALUES (5, 6, NULL, 1, 'APPROVE', 1, 2, '', '2025-11-02 17:22:37', '127.0.0.1');
 
 -- ----------------------------
--- Table structure for evaluation_publicity
+-- Table structure for evaluation_publicity (公示主表)
 -- ----------------------------
 DROP TABLE IF EXISTS `evaluation_publicity`;
 CREATE TABLE `evaluation_publicity`  (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '公示ID',
-  `academic_year` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学年',
-  `semester` tinyint NOT NULL COMMENT '学期',
-  `class_id` bigint NOT NULL COMMENT '班级ID',
-  `class_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '班级名称（冗余）',
+  `academic_year` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学年，如2024-2025',
+  `semester` tinyint NOT NULL COMMENT '学期：1-第一学期，2-第二学期',
+  `class_id` bigint NULL DEFAULT NULL COMMENT '班级ID（NULL表示全校公示），关联sys_dept.dept_id',
+  `college_id` bigint NULL DEFAULT NULL COMMENT '学院ID（NULL表示全校公示），关联sys_dept.dept_id',
   `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '公示标题',
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '公示说明内容',
   `start_time` datetime NOT NULL COMMENT '公示开始时间',
   `end_time` datetime NOT NULL COMMENT '公示结束时间',
-  `status` tinyint NULL DEFAULT 0 COMMENT '状态：0-公示中，1-已结束',
-  `total_count` int NULL DEFAULT 0 COMMENT '公示人数',
-  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '创建者',
-  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '更新者',
-  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `publicity_days` int NOT NULL DEFAULT 5 COMMENT '公示天数（工作日）',
+  `status` tinyint NOT NULL DEFAULT 0 COMMENT '状态：0-进行中，1-已结束',
+  `total_count` int NOT NULL DEFAULT 0 COMMENT '公示学生总数',
+  `view_count` int NOT NULL DEFAULT 0 COMMENT '浏览次数',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '创建者',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '更新者',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE INDEX `uk_class_year_semester`(`class_id` ASC, `academic_year` ASC, `semester` ASC) USING BTREE,
+  INDEX `idx_academic_year`(`academic_year` ASC) USING BTREE,
+  INDEX `idx_semester`(`semester` ASC) USING BTREE,
+  INDEX `idx_class_id`(`class_id` ASC) USING BTREE,
+  INDEX `idx_college_id`(`college_id` ASC) USING BTREE,
   INDEX `idx_status`(`status` ASC) USING BTREE,
-  INDEX `idx_end_time`(`end_time` ASC) USING BTREE,
-  INDEX `idx_academic_year`(`academic_year` ASC, `semester` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '考评结果公示表' ROW_FORMAT = Dynamic;
+  INDEX `idx_start_time`(`start_time` ASC) USING BTREE,
+  INDEX `idx_publicity_year_semester_status`(`academic_year` ASC, `semester` ASC, `status` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '考评结果公示主表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of evaluation_publicity
 -- ----------------------------
+INSERT INTO `evaluation_publicity` VALUES (1, '2024-2025', 1, NULL, NULL, '2024-2025学年第一学期综合测评结果公示', '根据《西安文理学院学生综合素质测评办法》，现将2024-2025学年第一学期综合测评结果予以公示。公示期为5个工作日，如有异议，请在公示期内向辅导员提出申诉。', '2025-01-15 09:00:00', '2025-01-22 18:00:00', 5, 0, 0, 0, 'admin', '2025-11-11 00:00:00', 'admin', '2025-11-11 00:00:00', '全校公示');
 
 -- ----------------------------
--- Table structure for evaluation_publicity_detail
+-- Table structure for evaluation_publicity_detail (公示详情表)
 -- ----------------------------
 DROP TABLE IF EXISTS `evaluation_publicity_detail`;
 CREATE TABLE `evaluation_publicity_detail`  (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '详情ID',
-  `publicity_id` bigint NOT NULL COMMENT '公示ID',
-  `submission_id` bigint NOT NULL COMMENT '填报ID',
-  `student_id` bigint NOT NULL COMMENT '学生ID',
-  `student_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学生姓名',
-  `student_number` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学号',
-  `total_score` decimal(8, 2) NOT NULL COMMENT '总分',
-  `moral_score` decimal(6, 2) NOT NULL COMMENT '德育分',
-  `intellectual_score` decimal(6, 2) NOT NULL COMMENT '智育分',
-  `physical_score` decimal(6, 2) NOT NULL COMMENT '体育分',
-  `aesthetic_score` decimal(6, 2) NOT NULL COMMENT '美育分',
-  `labor_score` decimal(6, 2) NOT NULL COMMENT '劳育分',
-  `class_rank` int NOT NULL COMMENT '班级排名',
+  `publicity_id` bigint NOT NULL COMMENT '公示ID，关联evaluation_publicity.id',
+  `submission_id` bigint NOT NULL COMMENT '填报ID，关联evaluation_submission.id',
+  `student_id` bigint NOT NULL COMMENT '学生ID，关联sys_user.user_id',
+  `student_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学生姓名（冗余字段，提高查询效率）',
+  `student_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学号（冗余字段）',
+  `class_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '班级名称（冗余字段）',
+  `total_score` decimal(8, 2) NOT NULL DEFAULT 0.00 COMMENT '总分',
+  `moral_score` decimal(6, 2) NOT NULL DEFAULT 0.00 COMMENT '德育分数',
+  `intellectual_score` decimal(6, 2) NOT NULL DEFAULT 0.00 COMMENT '智育分数',
+  `physical_score` decimal(6, 2) NOT NULL DEFAULT 0.00 COMMENT '体育分数',
+  `aesthetic_score` decimal(6, 2) NOT NULL DEFAULT 0.00 COMMENT '美育分数',
+  `labor_score` decimal(6, 2) NOT NULL DEFAULT 0.00 COMMENT '劳育分数',
+  `class_rank` int NULL DEFAULT NULL COMMENT '班级排名',
+  `major_rank` int NULL DEFAULT NULL COMMENT '专业排名',
+  `college_rank` int NULL DEFAULT NULL COMMENT '学院排名',
+  `snapshot_data` json NULL DEFAULT NULL COMMENT '数据快照（JSON格式，保存公示时的完整数据）',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_publicity_student`(`publicity_id` ASC, `student_id` ASC) USING BTREE COMMENT '防止同一公示中重复添加同一学生',
   INDEX `idx_publicity_id`(`publicity_id` ASC) USING BTREE,
   INDEX `idx_student_id`(`student_id` ASC) USING BTREE,
-  INDEX `idx_submission_id`(`submission_id` ASC) USING BTREE,
-  INDEX `idx_class_rank`(`class_rank` ASC) USING BTREE,
-  CONSTRAINT `fk_publicity_detail_publicity` FOREIGN KEY (`publicity_id`) REFERENCES `evaluation_publicity` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '公示详情表' ROW_FORMAT = Dynamic;
+  INDEX `idx_total_score`(`total_score` ASC) USING BTREE,
+  INDEX `idx_publicity_detail_publicity_score`(`publicity_id` ASC, `total_score` DESC) USING BTREE,
+  CONSTRAINT `fk_publicity_detail_publicity` FOREIGN KEY (`publicity_id`) REFERENCES `evaluation_publicity` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_publicity_detail_submission` FOREIGN KEY (`submission_id`) REFERENCES `evaluation_submission` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_publicity_detail_student` FOREIGN KEY (`student_id`) REFERENCES `sys_user` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '考评结果公示详情表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of evaluation_publicity_detail
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for evaluation_publicity_view_log (公示浏览日志表)
+-- ----------------------------
+DROP TABLE IF EXISTS `evaluation_publicity_view_log`;
+CREATE TABLE `evaluation_publicity_view_log`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+  `publicity_id` bigint NOT NULL COMMENT '公示ID，关联evaluation_publicity.id',
+  `user_id` bigint NOT NULL COMMENT '浏览用户ID，关联sys_user.user_id',
+  `view_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '浏览时间',
+  `ip_address` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'IP地址',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_publicity_id`(`publicity_id` ASC) USING BTREE,
+  INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
+  INDEX `idx_view_time`(`view_time` ASC) USING BTREE,
+  CONSTRAINT `fk_eval_publicity_view_log_publicity` FOREIGN KEY (`publicity_id`) REFERENCES `evaluation_publicity` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_eval_publicity_view_log_user` FOREIGN KEY (`user_id`) REFERENCES `sys_user` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '公示浏览日志表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of evaluation_publicity_view_log
 -- ----------------------------
 
 -- ----------------------------
@@ -2564,5 +2601,30 @@ CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `v_student_score_summary`
 -- ----------------------------
 DROP VIEW IF EXISTS `v_student_submission_stats`;
 CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `v_student_submission_stats` AS select `s`.`id` AS `id`,`s`.`student_id` AS `student_id`,`u`.`nick_name` AS `student_name`,`u`.`user_name` AS `student_code`,`s`.`academic_year` AS `academic_year`,`s`.`semester` AS `semester`,`s`.`class_id` AS `class_id`,`d`.`dept_name` AS `class_name`,`s`.`status` AS `status`,`s`.`total_score` AS `total_score`,`s`.`moral_score` AS `moral_score`,`s`.`intellectual_score` AS `intellectual_score`,`s`.`physical_score` AS `physical_score`,`s`.`aesthetic_score` AS `aesthetic_score`,`s`.`labor_score` AS `labor_score`,count(`sd`.`id`) AS `detail_count`,count((case when (`sd`.`status` = 1) then 1 end)) AS `approved_count`,count((case when (`sd`.`status` = 2) then 1 end)) AS `rejected_count`,`s`.`submit_time` AS `submit_time`,`s`.`audit_time` AS `audit_time`,`s`.`create_time` AS `create_time`,`s`.`update_time` AS `update_time` from (((`evaluation_submission` `s` left join `sys_user` `u` on((`s`.`student_id` = `u`.`user_id`))) left join `sys_dept` `d` on((`s`.`class_id` = `d`.`dept_id`))) left join `evaluation_submission_detail` `sd` on((`s`.`id` = `sd`.`submission_id`))) group by `s`.`id`;
+
+-- ----------------------------
+-- View structure for v_publicity_stats (公示统计视图)
+-- ----------------------------
+DROP VIEW IF EXISTS `v_publicity_stats`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `v_publicity_stats` AS
+SELECT
+    p.id,
+    p.academic_year,
+    p.semester,
+    p.title,
+    p.start_time,
+    p.end_time,
+    p.status,
+    p.total_count,
+    p.view_count,
+    COUNT(DISTINCT pd.student_id) AS actual_student_count,
+    AVG(pd.total_score) AS avg_total_score,
+    MAX(pd.total_score) AS max_total_score,
+    MIN(pd.total_score) AS min_total_score,
+    p.create_by,
+    p.create_time
+FROM evaluation_publicity p
+LEFT JOIN evaluation_publicity_detail pd ON p.id = pd.publicity_id
+GROUP BY p.id;
 
 SET FOREIGN_KEY_CHECKS = 1;

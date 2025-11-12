@@ -11,16 +11,24 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.common.utils.poi.ExcelUtil;
+import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.system.service.IEvaluationSubmissionService;
 import com.ruoyi.system.domain.EvaluationSubmission;
 import com.ruoyi.system.domain.dto.AuditRequest;
 import com.ruoyi.system.domain.dto.BatchAuditRequest;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.ArrayList;
 
 /**
  * 综测填报Controller
@@ -36,14 +44,14 @@ public class EvaluationSubmissionController extends BaseController
     private IEvaluationSubmissionService evaluationSubmissionService;
 
     /**
-     * 查询综测填报列表
+     * 查询综测填报列表（支持班委、辅导员、管理员）
      */
-    @PreAuthorize("@ss.hasPermi('evaluation:submission:list')")
+    @PreAuthorize("@ss.hasAnyPermi('evaluation:submission:list,evaluation:classCommittee:query')")
     @GetMapping("/list")
     public TableDataInfo list(EvaluationSubmission evaluationSubmission)
     {
         startPage();
-        List<EvaluationSubmission> list = evaluationSubmissionService.selectEvaluationSubmissionList(evaluationSubmission);
+        List<EvaluationSubmission> list = evaluationSubmissionService.selectEvaluationSubmissionListByRole(evaluationSubmission);
         return getDataTable(list);
     }
 
@@ -104,6 +112,58 @@ public class EvaluationSubmissionController extends BaseController
     }
 
     /**
+     * 查询学生在指定学年学期的提交记录
+     */
+    @PreAuthorize("@ss.hasPermi('evaluation:submission:query')")
+    @GetMapping("/semester")
+    public AjaxResult getBySemester(@RequestParam String academicYear, @RequestParam Integer semester)
+    {
+        Long userId = SecurityUtils.getUserId();
+        EvaluationSubmission submission = evaluationSubmissionService.selectByUserAndSemester(userId, academicYear, semester);
+
+        // 手动处理ruleSnapshot的序列化
+        // 将ruleSnapshotObj设置到返回的Map中，而不是直接返回实体对象
+        if (submission != null && submission.getDetails() != null) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", submission.getId());
+            result.put("userId", submission.getUserId());
+            result.put("academicYear", submission.getAcademicYear());
+            result.put("semester", submission.getSemester());
+            result.put("classId", submission.getClassId());
+            result.put("status", submission.getStatus());
+            result.put("remark", submission.getRemark());
+            result.put("submitTime", submission.getSubmitTime());
+            result.put("createTime", submission.getCreateTime());
+            result.put("updateTime", submission.getUpdateTime());
+
+            // 处理details，将ruleSnapshotObj作为ruleSnapshot返回
+            List<Map<String, Object>> detailsList = new ArrayList<>();
+            for (com.ruoyi.system.domain.EvaluationSubmissionDetail detail : submission.getDetails()) {
+                Map<String, Object> detailMap = new HashMap<>();
+                detailMap.put("id", detail.getId());
+                detailMap.put("submissionId", detail.getSubmissionId());
+                detailMap.put("ruleId", detail.getRuleId());
+                // 使用ruleSnapshotObj（JSON对象）而不是ruleSnapshot（字符串）
+                detailMap.put("ruleSnapshot", detail.getRuleSnapshotObj());
+                detailMap.put("applyScore", detail.getApplyScore());
+                detailMap.put("finalScore", detail.getFinalScore());
+                detailMap.put("status", detail.getStatus());
+                detailMap.put("remark", detail.getRemark());
+                detailMap.put("auditTime", detail.getAuditTime());
+                detailMap.put("auditBy", detail.getAuditBy());
+                detailMap.put("auditComment", detail.getAuditComment());
+                detailMap.put("attachments", detail.getAttachments());
+                detailsList.add(detailMap);
+            }
+            result.put("details", detailsList);
+
+            return success(result);
+        }
+
+        return success(submission);
+    }
+
+    /**
      * 获取填报统计数据
      */
     @PreAuthorize("@ss.hasPermi('evaluation:submission:statistics')")
@@ -122,13 +182,14 @@ public class EvaluationSubmissionController extends BaseController
     public void export(HttpServletResponse response, EvaluationSubmission evaluationSubmission)
     {
         List<EvaluationSubmission> list = evaluationSubmissionService.selectEvaluationSubmissionList(evaluationSubmission);
-        // TODO: 实现导出逻辑
+        ExcelUtil<EvaluationSubmission> util = new ExcelUtil<EvaluationSubmission>(EvaluationSubmission.class);
+        util.exportExcel(response, list, "综测填报数据");
     }
 
     /**
-     * 执行审核操作
+     * 执行审核操作（支持班委、辅导员、管理员）
      */
-    @PreAuthorize("@ss.hasPermi('evaluation:submission:audit')")
+    @PreAuthorize("@ss.hasAnyPermi('evaluation:submission:audit,evaluation:classCommittee:approve,evaluation:classCommittee:reject')")
     @Log(title = "综测审核", businessType = BusinessType.UPDATE)
     @PostMapping("/audit")
     public AjaxResult audit(@RequestBody AuditRequest auditRequest)
@@ -142,9 +203,9 @@ public class EvaluationSubmissionController extends BaseController
     }
 
     /**
-     * 批量审核操作
+     * 批量审核操作（支持班委、辅导员、管理员）
      */
-    @PreAuthorize("@ss.hasPermi('evaluation:submission:audit')")
+    @PreAuthorize("@ss.hasAnyPermi('evaluation:submission:audit,evaluation:classCommittee:batch')")
     @Log(title = "综测批量审核", businessType = BusinessType.UPDATE)
     @PostMapping("/audit/batch")
     public AjaxResult batchAudit(@RequestBody BatchAuditRequest batchAuditRequest)

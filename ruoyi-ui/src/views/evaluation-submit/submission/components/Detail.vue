@@ -69,14 +69,6 @@
       </div>
     </el-card>
 
-    <!-- 自我评价 -->
-    <el-card shadow="never" class="section-card">
-      <div slot="header" class="section-header">
-        <i class="el-icon-edit"></i>
-        <span>自我评价</span>
-      </div>
-      <div class="self-eval">{{ (record && record.selfEvaluation) || '—' }}</div>
-    </el-card>
 
     <!-- 明细列表（按维度折叠） -->
     <el-card shadow="never" class="section-card" v-loading="loading">
@@ -84,23 +76,39 @@
         <i class="el-icon-document"></i>
         <span>条目明细</span>
       </div>
-      <el-collapse v-model="activePanels">
+
+      <!-- 无数据提示 -->
+      <el-empty
+        v-if="!detail || !detail.details || detail.details.length === 0"
+        description="暂无条目明细数据"
+        :image-size="100"
+      >
+        <template slot="description">
+          <p style="color: #909399; font-size: 14px;">此填报记录暂无详细的成果条目数据</p>
+          <p style="color: #C0C4CC; font-size: 12px; margin-top: 8px;">
+            可能原因：早期测试数据、草稿未完成或数据已被清理
+          </p>
+        </template>
+      </el-empty>
+
+      <!-- 有数据时显示折叠面板 -->
+      <el-collapse v-else v-model="activePanels">
         <el-collapse-item v-for="(items, dim) in groupedDetails" :key="dim" :name="dim">
           <template slot="title">
             <span class="collapse-title">{{ dimensionNameMap[dim] || dim }}</span>
           </template>
           <el-table :data="items" border size="small">
             <el-table-column label="类别" min-width="160">
-              <template slot-scope="scope">{{ scope.row.ruleSnapshot && scope.row.ruleSnapshot.category }}</template>
+              <template slot-scope="scope">{{ getRuleSnapshotField(scope.row, 'category') }}</template>
             </el-table-column>
             <el-table-column label="项目" min-width="160">
-              <template slot-scope="scope">{{ scope.row.ruleSnapshot && scope.row.ruleSnapshot.itemName }}</template>
+              <template slot-scope="scope">{{ getRuleSnapshotField(scope.row, 'itemName') }}</template>
             </el-table-column>
             <el-table-column prop="finalScore" label="分数" width="120">
               <template slot-scope="scope">{{ (scope.row.finalScore || 0).toFixed(2) }}</template>
             </el-table-column>
             <el-table-column prop="remark" label="备注" min-width="160">
-              <template slot-scope="scope">{{ scope.row.remark || '—' }}</template>
+              <template slot-scope="scope">{{ scope.row.remark || '暂无' }}</template>
             </el-table-column>
             <el-table-column label="附件" min-width="160">
               <template slot-scope="scope">
@@ -112,6 +120,7 @@
                     :underline="false"
                     :href="getAttachmentHref(att)"
                     target="_blank"
+                    type="success"
                   >{{ getAttachmentName(att, idx) }}</el-link>
                 </div>
               </template>
@@ -194,14 +203,59 @@ export default {
       return sum.toFixed(2)
     },
     groupedDetails() {
+      console.log('[groupedDetails] 开始计算分组详情')
       const details = (this.detail && this.detail.details) || []
+      console.log('[groupedDetails] 详情列表:', details)
+      console.log('[groupedDetails] 详情数量:', details.length)
+
       const groups = {}
-      details.forEach(d => {
-        const dim = d.ruleSnapshot && d.ruleSnapshot.dimension
-        if (!dim) return
+      details.forEach((d, index) => {
+        console.log(`[groupedDetails] 处理第${index + 1}条详情:`, d)
+
+        // 解析 ruleSnapshot（可能是字符串）
+        let snapshot = d.ruleSnapshot
+        console.log(`[groupedDetails] 第${index + 1}条的ruleSnapshot类型:`, typeof snapshot)
+        console.log(`[groupedDetails] 第${index + 1}条的ruleSnapshot内容:`, snapshot)
+
+        if (typeof snapshot === 'string') {
+          try {
+            snapshot = JSON.parse(snapshot)
+            console.log(`[groupedDetails] 第${index + 1}条解析后的snapshot:`, snapshot)
+          } catch (e) {
+            console.error(`[groupedDetails] 第${index + 1}条解析ruleSnapshot失败:`, e, snapshot)
+            return
+          }
+        }
+
+        // 优先使用 dimensionType（数字），然后使用 dimension（字符串）
+        let dim = null
+        if (snapshot && snapshot.dimensionType !== undefined) {
+          // dimensionType: 0=德育, 1=智育, 2=体育, 3=美育, 4=劳育
+          const typeMap = { 0: 'moral', 1: 'intellectual', 2: 'physical', 3: 'aesthetic', 4: 'labor' }
+          dim = typeMap[snapshot.dimensionType]
+          console.log(`[groupedDetails] 第${index + 1}条通过dimensionType(${snapshot.dimensionType})确定维度:`, dim)
+        } else if (snapshot && snapshot.dimension) {
+          dim = snapshot.dimension
+          console.log(`[groupedDetails] 第${index + 1}条通过dimension确定维度:`, dim)
+        }
+
+        if (!dim) {
+          console.warn(`[groupedDetails] 第${index + 1}条无法确定维度，跳过`)
+          return
+        }
+
         if (!groups[dim]) groups[dim] = []
+
+        // 将解析后的 snapshot 保存回对象，方便模板使用
+        d.parsedSnapshot = snapshot
+        console.log(`[groupedDetails] 第${index + 1}条的parsedSnapshot:`, d.parsedSnapshot)
+        console.log(`[groupedDetails] 第${index + 1}条的category:`, snapshot.category)
+        console.log(`[groupedDetails] 第${index + 1}条的itemName:`, snapshot.itemName)
+
         groups[dim].push(d)
       })
+
+      console.log('[groupedDetails] 最终分组结果:', groups)
       return groups
     },
     dimensionSummary() {
@@ -341,6 +395,44 @@ export default {
         console.error('加载审核记录失败:', e)
       }
     },
+    // 获取 ruleSnapshot 中的字段值
+    getRuleSnapshotField(row, fieldName) {
+      console.log('[getRuleSnapshotField] 开始解析字段:', fieldName)
+      console.log('[getRuleSnapshotField] row对象:', row)
+      console.log('[getRuleSnapshotField] row.parsedSnapshot:', row.parsedSnapshot)
+      console.log('[getRuleSnapshotField] row.ruleSnapshot:', row.ruleSnapshot)
+
+      // 优先使用已解析的 parsedSnapshot
+      if (row.parsedSnapshot) {
+        const value = row.parsedSnapshot[fieldName]
+        console.log(`[getRuleSnapshotField] 从parsedSnapshot获取${fieldName}:`, value)
+        return value || '—'
+      }
+
+      // 如果没有 parsedSnapshot，尝试解析 ruleSnapshot
+      if (!row.ruleSnapshot) {
+        console.warn('[getRuleSnapshotField] ruleSnapshot不存在')
+        return '—'
+      }
+
+      let snapshot = row.ruleSnapshot
+      console.log('[getRuleSnapshotField] ruleSnapshot类型:', typeof snapshot)
+
+      if (typeof snapshot === 'string') {
+        try {
+          snapshot = JSON.parse(snapshot)
+          console.log('[getRuleSnapshotField] 解析后的snapshot:', snapshot)
+        } catch (e) {
+          console.error('[getRuleSnapshotField] 解析ruleSnapshot失败:', e, snapshot)
+          return '—'
+        }
+      }
+
+      const value = snapshot[fieldName]
+      console.log(`[getRuleSnapshotField] 最终获取${fieldName}:`, value)
+      return value || '—'
+    },
+
     getAttachmentHref(att) {
       // 兼容字符串/对象
       if (!att) return undefined
@@ -350,7 +442,7 @@ export default {
     getAttachmentName(att, idx) {
       if (!att) return `附件${idx + 1}`
       if (typeof att === 'string') return att.split('/').pop() || `附件${idx + 1}`
-      return att.name || att.fileName || `附件${idx + 1}`
+      return att.name || att.fileName || att.originalName || `附件${idx + 1}`
     },
 
     getTimelineType(operation) {

@@ -1,0 +1,415 @@
+{
+	"info": {
+		"_postman_id": "student-import-api-test",
+		"name": "学生批量导入API测试",
+		"description": "学生批量导入功能的完整API测试集合",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. 用户登录",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// 保存token到环境变量",
+							"var jsonData = pm.response.json();",
+							"if (jsonData.code === 200) {",
+							"    pm.environment.set(\"token\", jsonData.token);",
+							"    pm.test(\"登录成功\", function () {",
+							"        pm.expect(jsonData.code).to.eql(200);",
+							"    });",
+							"} else {",
+							"    pm.test(\"登录失败\", function () {",
+							"        pm.expect.fail(jsonData.msg);",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"admin123\",\n    \"code\": \"0000\",\n    \"uuid\": \"test-uuid\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"login"
+					]
+				},
+				"description": "管理员登录获取token"
+			},
+			"response": []
+		},
+		{
+			"name": "2. 下载导入模板",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"模板下载成功\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/vnd.openxmlformats');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/evaluation/t_user_profile/importTemplate",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"evaluation",
+						"t_user_profile",
+						"importTemplate"
+					]
+				},
+				"description": "下载学生批量导入Excel模板"
+			},
+			"response": []
+		},
+		{
+			"name": "3. 批量导入学生（新增模式）",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"导入成功\", function () {",
+							"    pm.expect(jsonData.code).to.eql(200);",
+							"    pm.expect(jsonData.msg).to.include(\"导入成功\");",
+							"});",
+							"",
+							"pm.test(\"返回导入详情\", function () {",
+							"    pm.expect(jsonData.msg).to.be.a('string');",
+							"    pm.expect(jsonData.msg.length).to.be.above(0);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "学生批量导入测试数据_正常.xlsx",
+							"description": "上传Excel文件"
+						},
+						{
+							"key": "updateSupport",
+							"value": "false",
+							"type": "text",
+							"description": "是否更新已存在数据"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/evaluation/t_user_profile/importStudents",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"evaluation",
+						"t_user_profile",
+						"importStudents"
+					]
+				},
+				"description": "批量导入学生（新增模式，不更新已存在数据）"
+			},
+			"response": []
+		},
+		{
+			"name": "4. 批量导入学生（更新模式）",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"导入/更新成功\", function () {",
+							"    pm.expect(jsonData.code).to.eql(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "学生批量导入测试数据_正常.xlsx"
+						},
+						{
+							"key": "updateSupport",
+							"value": "true",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/evaluation/t_user_profile/importStudents?updateSupport=true",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"evaluation",
+						"t_user_profile",
+						"importStudents"
+					],
+					"query": [
+						{
+							"key": "updateSupport",
+							"value": "true"
+						}
+					]
+				},
+				"description": "批量导入学生（更新模式，会更新已存在数据）"
+			},
+			"response": []
+		},
+		{
+			"name": "5. 导入验证失败测试",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"导入失败（预期行为）\", function () {",
+							"    pm.expect(jsonData.code).to.eql(500);",
+							"    pm.expect(jsonData.msg).to.include(\"导入失败\");",
+							"});",
+							"",
+							"pm.test(\"包含错误详情\", function () {",
+							"    pm.expect(jsonData.msg).to.be.a('string');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "学生批量导入测试数据_验证失败.xlsx"
+						},
+						{
+							"key": "updateSupport",
+							"value": "false",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/evaluation/t_user_profile/importStudents",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"evaluation",
+						"t_user_profile",
+						"importStudents"
+					]
+				},
+				"description": "测试数据验证功能（应该失败）"
+			},
+			"response": []
+		},
+		{
+			"name": "6. 查询导入的学生列表",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"查询成功\", function () {",
+							"    pm.expect(jsonData.code).to.eql(200);",
+							"});",
+							"",
+							"pm.test(\"返回学生列表\", function () {",
+							"    pm.expect(jsonData.rows).to.be.an('array');",
+							"    pm.expect(jsonData.total).to.be.above(0);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/evaluation/t_user_profile/list?pageNum=1&pageSize=10",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"evaluation",
+						"t_user_profile",
+						"list"
+					],
+					"query": [
+						{
+							"key": "pageNum",
+							"value": "1"
+						},
+						{
+							"key": "pageSize",
+							"value": "10"
+						}
+					]
+				},
+				"description": "查询导入的学生档案列表"
+			},
+			"response": []
+		},
+		{
+			"name": "7. 验证用户账号创建",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"用户查询成功\", function () {",
+							"    pm.expect(jsonData.code).to.eql(200);",
+							"});",
+							"",
+							"pm.test(\"用户账号已创建\", function () {",
+							"    pm.expect(jsonData.data).to.not.be.null;",
+							"    pm.expect(jsonData.data.userName).to.eql(\"2507240101\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/system/user/2507240101",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"system",
+						"user",
+						"2507240101"
+					]
+				},
+				"description": "验证用户账号是否成功创建（通过学号查询）"
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+

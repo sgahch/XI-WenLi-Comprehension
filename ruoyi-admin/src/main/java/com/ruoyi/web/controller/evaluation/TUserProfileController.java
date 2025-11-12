@@ -4,6 +4,7 @@ import java.util.List;
 import javax.servlet.http.HttpServletResponse;
 
 import com.ruoyi.system.domain.TUserProfile;
+import com.ruoyi.system.domain.vo.StudentImportVO;
 import com.ruoyi.system.service.ITUserProfileService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
@@ -102,5 +104,30 @@ public class TUserProfileController extends BaseController
     public AjaxResult remove(@PathVariable Long[] ids)
     {
         return toAjax(tUserProfileService.deleteTUserProfileByIds(ids));
+    }
+
+    /**
+     * 批量导入学生
+     */
+    @PreAuthorize("@ss.hasPermi('evaluation:t_user_profile:import')")
+    @Log(title = "学生批量导入", businessType = BusinessType.IMPORT)
+    @PostMapping("/importStudents")
+    public AjaxResult importStudents(MultipartFile file, boolean updateSupport) throws Exception
+    {
+        ExcelUtil<StudentImportVO> util = new ExcelUtil<StudentImportVO>(StudentImportVO.class);
+        List<StudentImportVO> studentList = util.importExcel(file.getInputStream());
+        String operName = getUsername();
+        String message = tUserProfileService.importStudents(studentList, updateSupport, operName);
+        return success(message);
+    }
+
+    /**
+     * 下载学生批量导入模板
+     */
+    @PostMapping("/importTemplate")
+    public void importTemplate(HttpServletResponse response)
+    {
+        ExcelUtil<StudentImportVO> util = new ExcelUtil<StudentImportVO>(StudentImportVO.class);
+        util.importTemplateExcel(response, "学生批量导入");
     }
 }

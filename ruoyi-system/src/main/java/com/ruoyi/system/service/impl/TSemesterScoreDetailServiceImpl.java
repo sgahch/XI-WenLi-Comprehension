@@ -328,18 +328,36 @@ public class TSemesterScoreDetailServiceImpl implements ITSemesterScoreDetailSer
      * 获取班级成绩统计
      */
     @Override
-    public Map<String, Object> getClassScoreStatistics(String classId, String academicYear, String semester)
+    public Map<String, Object> getClassScoreStatistics(String className, String academicYear, String semester)
     {
-        return tSemesterScoreDetailMapper.getClassScoreStatistics(classId, academicYear, semester);
+        return tSemesterScoreDetailMapper.getClassScoreStatistics(className, academicYear, semester);
     }
 
     /**
      * 获取专业成绩统计
      */
     @Override
-    public Map<String, Object> getMajorScoreStatistics(String majorId, String academicYear, String semester)
+    public Map<String, Object> getMajorScoreStatistics(String majorName, String academicYear, String semester)
     {
-        return tSemesterScoreDetailMapper.getMajorScoreStatistics(majorId, academicYear, semester);
+        return tSemesterScoreDetailMapper.getMajorScoreStatistics(majorName, academicYear, semester);
+    }
+
+    /**
+     * 获取班级排行榜
+     */
+    @Override
+    public List<TSemesterScoreDetail> getClassRanking(String className, String academicYear, String semester)
+    {
+        return tSemesterScoreDetailMapper.getClassRanking(className, academicYear, semester);
+    }
+
+    /**
+     * 获取专业排行榜
+     */
+    @Override
+    public List<TSemesterScoreDetail> getMajorRanking(String majorName, String academicYear, String semester)
+    {
+        return tSemesterScoreDetailMapper.getMajorRanking(majorName, academicYear, semester);
     }
 
     /**

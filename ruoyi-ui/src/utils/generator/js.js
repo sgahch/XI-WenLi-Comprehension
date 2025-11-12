@@ -75,6 +75,7 @@ function buildAttributes(el, dataList, ruleList, optionsList, methodList, propsL
   }
 }
 
+
 function mixinMethod(type) {
   const list = []; const
     minxins = {

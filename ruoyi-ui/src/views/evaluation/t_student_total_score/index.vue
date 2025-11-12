@@ -201,7 +201,7 @@
         </template>
       </el-table-column>
     </el-table>
-    
+
     <pagination
       v-show="total>0"
       :total="total"
@@ -386,7 +386,7 @@ export default {
       this.multiple = !selection.length
     },
     /** 新增按钮操作 */
-    handleAdd() {
+    handleAdd() {r
       this.reset()
       this.open = true
       this.title = "添加学生总成绩"

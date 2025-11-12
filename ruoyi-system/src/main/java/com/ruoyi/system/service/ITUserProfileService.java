@@ -1,6 +1,7 @@
 package com.ruoyi.system.service;
 
 import com.ruoyi.system.domain.TUserProfile;
+import com.ruoyi.system.domain.vo.StudentImportVO;
 
 import java.util.List;
 
@@ -55,9 +56,19 @@ public interface ITUserProfileService
 
     /**
      * 删除学生档案管理信息
-     * 
+     *
      * @param id 学生档案管理主键
      * @return 结果
      */
     public int deleteTUserProfileById(Long id);
+
+    /**
+     * 批量导入学生数据
+     *
+     * @param studentList 学生数据列表
+     * @param updateSupport 是否更新已存在的学生数据
+     * @param operName 操作用户
+     * @return 导入结果消息
+     */
+    public String importStudents(List<StudentImportVO> studentList, Boolean updateSupport, String operName);
 }

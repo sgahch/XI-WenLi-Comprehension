@@ -11,7 +11,7 @@ import com.ruoyi.common.core.domain.BaseEntity;
  * 学生档案管理对象 t_user_profile
  * 
  * @author ruoyi
- * @date 2025-09-27
+ * @date 2025-11-09
  */
 public class TUserProfile extends BaseEntity
 {
@@ -43,6 +43,10 @@ public class TUserProfile extends BaseEntity
     /** 班级名称 */
     @Excel(name = "班级名称")
     private String className;
+
+    /** 所属班级ID（关联sys_dept表的班级） */
+    @Excel(name = "所属班级ID")
+    private Long deptId;
 
     /** 性别：0-男，1-女，2-未知 */
     @Excel(name = "性别：0-男，1-女，2-未知")
@@ -152,6 +156,16 @@ public class TUserProfile extends BaseEntity
         return className;
     }
 
+    public void setDeptId(Long deptId) 
+    {
+        this.deptId = deptId;
+    }
+
+    public Long getDeptId() 
+    {
+        return deptId;
+    }
+
     public void setGender(Long gender) 
     {
         this.gender = gender;
@@ -252,6 +266,7 @@ public class TUserProfile extends BaseEntity
             .append("major", getMajor())
             .append("grade", getGrade())
             .append("className", getClassName())
+            .append("deptId", getDeptId())
             .append("gender", getGender())
             .append("birthDate", getBirthDate())
             .append("politicalStatus", getPoliticalStatus())

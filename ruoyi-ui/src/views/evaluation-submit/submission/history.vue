@@ -78,7 +78,7 @@
       </div>
     </el-card>
 
-    <el-dialog :visible.sync="detailOpen" title="历史详情" width="800px" append-to-body>
+    <el-dialog :visible.sync="detailOpen" title="历史详情" width="80%" append-to-body :close-on-click-modal="false">
       <Detail :record="currentRow" />
     </el-dialog>
   </div>
@@ -102,7 +102,7 @@ export default {
       refreshTimer: null
     }
   },
-  created() { 
+  created() {
     this.handleQuery()
     this.startAutoRefresh()
   },
@@ -181,7 +181,7 @@ export default {
     handlePageChange(pageNum) { this.page.pageNum = pageNum; this.handleQuery() },
     openDetail(row) { this.currentRow = row; this.detailOpen = true },
     handleDownload() { this.$message.info('开始下载附件（示例占位）') },
-    
+
     // 开始自动刷新
     startAutoRefresh() {
       // 每30秒自动刷新一次
@@ -189,7 +189,7 @@ export default {
         this.handleQuery()
       }, 30000)
     },
-    
+
     // 停止自动刷新
     stopAutoRefresh() {
       if (this.refreshTimer) {
